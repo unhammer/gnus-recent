@@ -1,0 +1,62 @@
+#+TITLE: gnus-recent
+
+# [[https://melpa.org/#/gnus-recent][https://melpa.org/packages/gnus-recent-badge.svg]]
+
+Avoid having to open Gnus and find the right Group just to get back to
+that e-mail you were reading.
+
+Or hit a key while reading one article to pop back through the stack
+of previously read articles, even if they were in a different Group.
+
+Or insert a link to a recently read e-mail in an org-mode buffer by
+just picking one with [[https://github.com/abo-abo/swiper/][ivy]].
+
+# #+ATTR_HTML: :alt gnus-recent demo
+# [[file:gnus-recent.gif][file:gnus-recent.gif]]
+
+* Installation
+
+# ** MELPA
+# If you use [[https://melpa.org/][MELPA]], you can just do =M-x list-packages=, find
+# =gnus-recent= in the list and hit =i x=.
+
+** Manual
+Just put =gnus-recent.el= somewhere in =load-path=.
+
+
+* Usage
+
+After reading some articles in Gnus and then doing whatever,
+=gnus-recent-goto-ivy= will let you pick an article to
+re-open. Hitting =M-o l= will insert an =org-mode= link to the article
+instead.
+
+Doing =gnus-recent-goto-previous= will open the last read article and
+pop it off the stack, so you can keep calling it to go further back.
+
+
+** Manual, loading on startup:
+
+To use, require and bind whatever keys you prefer to the
+interactive function:
+
+#+BEGIN_SRC emacs-lisp
+  (require 'gnus-recent)
+  (global-set-key (kbd "<f3>") #'gnus-recent-goto-ivy) ; if you have ivy installed
+  (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous) ;
+  (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous)
+#+END_SRC
+
+** With use-package, enabled after org:
+
+If you prefer =use-package=, the above settings would be:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package gnus-recent
+    :load-path "~/src/gnus-recent"       ; wherever you checked this out
+    :after gnus
+    :bind (("<f3>" . gnus-recent-goto-ivy))
+    :config
+    (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous)
+    (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous))
+#+END_SRC
