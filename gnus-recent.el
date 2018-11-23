@@ -162,9 +162,16 @@ Warn if RECENT can't be deconstructed as expected."
                                                message-id)
                      (substring (car recent) 0 48))))))
 
+(defun gnus-recent--forget (recent)
+  "Remove RECENT Gnus article from `gnus-recent--articles-list'."
+  (setq gnus-recent--articles-list
+        (delete recent gnus-recent--articles-list))
+  (message "Removed %s from `gnus-recent--articles-list'" (car recent)))
+
 (eval-after-load 'ivy
   '(ivy-add-actions #'gnus-recent-goto-ivy
-                    '(("l" gnus-recent--insert-org-link "insert org link"))))
+                    '(("l" gnus-recent--insert-org-link "insert org link")
+                      ("k" gnus-recent--forget "forget"))))
 
 
 (provide 'gnus-recent)
