@@ -11,8 +11,8 @@ of previously read articles, even if they were in a different Group.
 Or insert a link to a recently read e-mail in an org-mode buffer by
 just picking one with [[https://github.com/abo-abo/swiper/][ivy]].
 
-# #+ATTR_HTML: :alt gnus-recent demo
-# [[file:gnus-recent.gif][file:gnus-recent.gif]]
+#+ATTR_HTML: :alt demo of gnus-recent inserting link with ivy in org-mode
+[[file:gnus-recent-org-mode.gif][file:gnus-recent-org-mode.gif]]
 
 * Installation
 
