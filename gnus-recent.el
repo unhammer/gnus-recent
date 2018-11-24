@@ -160,7 +160,9 @@ Warn if RECENT can't be deconstructed as expected."
                      (replace-regexp-in-string "^<\\|>$"
                                                ""
                                                message-id)
-                     (substring (car recent) 0 48))))))
+                     (replace-regexp-in-string "[][]"
+                                               ""
+                                               (substring (car recent) 0 48)))))))
 
 (defun gnus-recent--forget (recent)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'."
