@@ -21,19 +21,19 @@ just picking one with [[https://github.com/abo-abo/swiper/][ivy]].
 # =gnus-recent= in the list and hit =i x=.
 
 ** Manual
-Just put =gnus-recent.el= somewhere in =load-path=.
+Just put =gnus-recent.el= (and optionally =gnus-recent-ivy.el=)
+somewhere in =load-path=.
 
 
 * Usage
 
-After reading some articles in Gnus and then doing whatever,
-=gnus-recent-goto-ivy= will let you pick an article to
+After reading some articles in Gnus and then doing whatever, doing
+=gnus-recent-goto-previous= will open the last read article and rotate
+the list, so you can keep calling it to go further back.
+
+Doing =gnus-recent-ivy= will let you pick an article to
 re-open. Hitting =M-o l= will insert an =org-mode= link to the article
 instead.
-
-Doing =gnus-recent-goto-previous= will open the last read article and
-pop it off the stack, so you can keep calling it to go further back.
-
 
 ** Manual, loading on startup:
 
@@ -42,9 +42,9 @@ interactive function:
 
 #+BEGIN_SRC emacs-lisp
   (require 'gnus-recent)
-  (global-set-key (kbd "<f3>") #'gnus-recent-goto-ivy) ; if you have ivy installed
   (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous) ;
   (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous)
+  (global-set-key (kbd "<f3>") #'gnus-recent-ivy) ; if you have ivy installed
 #+END_SRC
 
 ** With use-package, enabled after org:
@@ -55,7 +55,7 @@ If you prefer =use-package=, the above settings would be:
   (use-package gnus-recent
     :load-path "~/src/gnus-recent"       ; wherever you checked this out
     :after gnus
-    :bind (("<f3>" . gnus-recent-goto-ivy))
+    :bind (("<f3>" . gnus-recent-ivy))
     :config
     (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous)
     (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous))
