@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018 Kevin Brubeck Unhammer
 
 ;; Author: Kevin Brubeck Unhammer <unhammer@fsfe.org>
-;; Version: 0.1.0
+;; Version: 0.1.1
 ;; URL: https://github.com/unhammer/gnus-recent
 ;; Package-Requires: ((emacs "25.3.2"))
 ;; Keywords: convenience, mail
@@ -141,6 +141,8 @@ Warn if RECENT can't be deconstructed as expected."
          (gnus-summary-read-group group 1) ; have to show at least one old one
          (gnus-summary-refer-article message-id))))))
 
+
+(declare-function ivy-read "ivy.el" (prompt collection &rest keys))
 (defun gnus-recent-goto-ivy ()
   "Select a recent Gnus article to open with `ivy'."
   (interactive)
@@ -170,6 +172,7 @@ Warn if RECENT can't be deconstructed as expected."
         (delete recent gnus-recent--articles-list))
   (message "Removed %s from `gnus-recent--articles-list'" (car recent)))
 
+(declare-function ivy-add-actions "ivy.el" (cmd actions))
 (eval-after-load 'ivy
   '(ivy-add-actions #'gnus-recent-goto-ivy
                     '(("l" gnus-recent--insert-org-link "insert org link")
