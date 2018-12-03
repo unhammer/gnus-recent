@@ -32,7 +32,7 @@
 ;;; interactive functions:
 ;;;
 ;;; (require 'gnus-recent-ivy)
-;;; (global-set-key (kbd "<f3>") #'gnus-recent-goto-ivy)
+;;; (global-set-key (kbd "<f3>") #'gnus-recent-ivy)
 
 ;;; If you prefer `use-package', the above settings would be:
 ;;;
