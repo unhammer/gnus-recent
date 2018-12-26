@@ -21,7 +21,6 @@
 
 (require 'gnus-recent)
 (require 'helm)
-(require 'helm-sources)
 
 (defun gnus-recent-helm ()
   "Select a recent Gnus article to open with `helm'."
@@ -30,8 +29,8 @@
                     (candidates . ,(mapcar (lambda (item)
                                              (cons (car item) item))
                                            gnus-recent--articles-list)) 
-                    (action . (("Insert Org link" . gnus-recent-insert-org-link)
-                               ("Open article"    . gnus-recent--open-article)
+                    (action . (("Open article"    . gnus-recent--open-article)
+                               ("Insert Org link" . gnus-recent-insert-org-link)
                                ("Forget article"  . gnus-recent-forget)))))
         :buffer "*helm gnus recent*"))
 
