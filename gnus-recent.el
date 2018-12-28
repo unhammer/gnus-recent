@@ -139,19 +139,27 @@ Warn if RECENT can't be deconstructed as expected."
          (gnus-summary-read-group group 1) ; have to show at least one old one
          (gnus-summary-refer-article message-id))))))
 
-(defun gnus-recent-insert-org-link (recent)
-  "Insert an `org-mode' link to RECENT Gnus article."
+(defun gnus-recent--create-org-link (recent)
+  "Return an `org-mode' link to RECENT Gnus article"
   (gnus-recent--action
    recent
    (lambda (message-id group)
-     (insert (format "[[gnus:%s#%s][Email from %s]]"
-                     group
-                     (replace-regexp-in-string "^<\\|>$"
-                                               ""
-                                               message-id)
-                     (replace-regexp-in-string "[][]"
-                                               ""
-                                               (substring (car recent) 0 48)))))))
+      (format "[[gnus:%s#%s][Email from %s]]"
+                group
+                (replace-regexp-in-string "^<\\|>$"
+                                          ""
+                                          message-id)
+                (replace-regexp-in-string "[][]"
+                                          ""
+                                          (substring (car recent) 0 48))))))
+
+(defun gnus-recent-kill-new-org-link (recent)
+  "Add to the kill-ring an `org-mode' link to RECENT Gnus article"
+  (kill-new (gnus-recent--create-org-link recent)))
+
+(defun gnus-recent-insert-org-link (recent)
+  "Insert an `org-mode' link to RECENT Gnus article"
+  (insert (gnus-recent--create-org-link recent)))
 
 (defun gnus-recent-forget (recent)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'."

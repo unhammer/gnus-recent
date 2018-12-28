@@ -1,1 +1,3 @@
-/gnus-recent.elc
+# backup, bytecode
+*~
+*.elc
