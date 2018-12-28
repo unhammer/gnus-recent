@@ -48,9 +48,10 @@
                     (candidates . ,(mapcar (lambda (item)
                                              (cons (car item) item))
                                            gnus-recent--articles-list)) 
-                    (action . (("Open article"    . gnus-recent--open-article)
-                               ("Insert Org link" . gnus-recent-insert-org-link)
-                               ("Forget article"  . gnus-recent-forget)))))
+                    (action . (("Open article"               . gnus-recent--open-article)
+                               ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
+                               ("Insert org link"            . gnus-recent-insert-org-link)
+                               ("Remove article"             . gnus-recent-forget)))))
         :buffer "*helm gnus recent*"))
 
 (provide 'gnus-recent-helm)
