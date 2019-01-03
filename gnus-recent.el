@@ -112,6 +112,17 @@ This function is applied by the abnormal hook
 
 (add-hook 'gnus-summary-article-move-hook 'gnus-recent--track-move-article)
 
+(defun gnus-recent--track-delete-article (action ghead group &rest rest)
+  "Track interactive user deletion of articles and remove the
+article data in `gnus-recent--articles-list'. This function is
+applied by the abnormal hook `gnus-summary-article-delete-hook'."
+  (when (eq action 'delete)
+    (cl-delete (gnus-recent--get-article-data)
+               gnus-recent--articles-list
+               :test 'equal :count 1)))
+
+(add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
+
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
   `(let ((top (pop ,lst)))
