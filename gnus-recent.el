@@ -64,9 +64,8 @@
   "Face used for dates in the recent article list."
   :group 'gnus-recent)
 
-(defun gnus-recent--track-article ()
-  "Store this article in the recent article list."
-  ;; TODO: Should track B-m's too!
+(defun gnus-recent--get-article-data ()
+  "Get the article data used for gnus-recent"
   (unless gnus-recent--showing-recent
     (set-buffer gnus-summary-buffer)
     (let ((article-number
@@ -76,23 +75,48 @@
                                 (gnus-summary-skip-intangible)
                                 (or (get-text-property (point) 'gnus-number)
                                     (gnus-summary-last-subject)))))))
-      (add-to-list 'gnus-recent--articles-list
-                   (list
-                    (format "%s: %s \t%s"
-                            (propertize
-                             (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
-                                                       (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
-                                                                                 (mail-header-from article-number)))
-                             'face 'bold)
-                            (mail-header-subject article-number)
-                            (propertize
-                             (mail-header-date article-number)
-                             'face 'gnus-recent-date-face))
-                    (mail-header-id article-number)
-                    gnus-newsgroup-name))))
+      (list
+       (format "%s: %s \t%s"
+               (propertize
+                (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
+                                          (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
+                                                                    (mail-header-from article-number)))
+                'face 'bold)
+               (mail-header-subject article-number)
+               (propertize (mail-header-date article-number) 'face 'gnus-recent-date-face))
+       (mail-header-id article-number)
+       gnus-newsgroup-name))))
+
+(defun gnus-recent--track-article ()
+  "Store this article in the recent article list.
+For tracking of Backend moves (B-m) see `gnus-request-track-move-article'."
+  ;; DONE: Should track B-m's too!
+  (let ((article-data (gnus-recent--get-article-data)))
+    (when article-data
+      (add-to-list 'gnus-recent--articles-list article-data)))
   (setq gnus-recent--showing-recent nil))
 
 (add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
+
+(defun gnus-recent--track-move-article (fn article group server accept-function
+					   &optional last move-is-internal)
+  "Track the backend movement (B-m) of articles and update the `gnus-recent--articles-list'.
+The backend move interactive function is
+`gnus-summary-move-article', which calls
+`gnus-request-move-article' to do the actual move. This function
+advises :around `gnus-request-move-article'. Always returns the
+result of `gnus-request-move-article'. When non-nil the article
+data in `gnus-recent--articles-list' is updated accordingly."
+  (let ((article-data (gnus-recent--get-article-data))
+        (result (funcall fn article group server accept-function last move-is-internal)))
+    (if (and article-data result)
+        (cl-nsubstitute (-replace-at 2 (nth 1 accept-function) article-data)
+                        article-data
+                        gnus-recent--articles-list
+                        :test 'equal :count 1))
+    result))
+
+(advice-add 'gnus-request-move-article :around #'gnus-recent--track-move-article)
 
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
