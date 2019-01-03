@@ -46,6 +46,7 @@
 ;;; Code:
 
 (require 'gnus-sum)
+(require 'dash)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -64,9 +65,8 @@
   "Face used for dates in the recent article list."
   :group 'gnus-recent)
 
-(defun gnus-recent--track-article ()
-  "Store this article in the recent article list."
-  ;; TODO: Should track B-m's too!
+(defun gnus-recent--get-article-data ()
+  "Get the article data used for gnus-recent."
   (unless gnus-recent--showing-recent
     (set-buffer gnus-summary-buffer)
     (let ((article-number
@@ -76,23 +76,40 @@
                                 (gnus-summary-skip-intangible)
                                 (or (get-text-property (point) 'gnus-number)
                                     (gnus-summary-last-subject)))))))
-      (add-to-list 'gnus-recent--articles-list
-                   (list
-                    (format "%s: %s \t%s"
-                            (propertize
-                             (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
-                                                       (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
-                                                                                 (mail-header-from article-number)))
-                             'face 'bold)
-                            (mail-header-subject article-number)
-                            (propertize
-                             (mail-header-date article-number)
-                             'face 'gnus-recent-date-face))
-                    (mail-header-id article-number)
-                    gnus-newsgroup-name))))
+      (list
+       (format "%s: %s \t%s"
+               (propertize
+                (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
+                                          (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
+                                                                    (mail-header-from article-number)))
+                'face 'bold)
+               (mail-header-subject article-number)
+               (propertize (mail-header-date article-number) 'face 'gnus-recent-date-face))
+       (mail-header-id article-number)
+       gnus-newsgroup-name))))
+
+(defun gnus-recent--track-article ()
+  "Store this article in the recent article list.
+For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
+  (let ((article-data (gnus-recent--get-article-data)))
+    (when article-data
+      (add-to-list 'gnus-recent--articles-list article-data)))
   (setq gnus-recent--showing-recent nil))
 
 (add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
+
+(defun gnus-recent--track-move-article (action article from-group to-group select-method)
+  "Track the backend movement (B-m) of articles and update the article data in `gnus-recent--articles-list'.
+This function is applied by the abnormal hook
+`gnus-summary-article-move-hook'."
+  (when (eq action 'move)
+    (let ((article-data (gnus-recent--get-article-data)))
+      (cl-nsubstitute (-replace-at 2 to-group article-data)
+                      article-data
+                      gnus-recent--articles-list
+                      :test 'equal :count 1))))
+
+(add-hook 'gnus-summary-article-move-hook 'gnus-recent--track-move-article)
 
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
