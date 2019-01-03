@@ -46,6 +46,7 @@
 ;;; Code:
 
 (require 'gnus-sum)
+(require 'dash)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -89,7 +90,7 @@
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
-For tracking of Backend moves (B-m) see `gnus-request-track-move-article'."
+For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
   ;; DONE: Should track B-m's too!
   (let ((article-data (gnus-recent--get-article-data)))
     (when article-data
@@ -98,25 +99,18 @@ For tracking of Backend moves (B-m) see `gnus-request-track-move-article'."
 
 (add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
 
-(defun gnus-recent--track-move-article (fn article group server accept-function
-					   &optional last move-is-internal)
-  "Track the backend movement (B-m) of articles and update the `gnus-recent--articles-list'.
-The backend move interactive function is
-`gnus-summary-move-article', which calls
-`gnus-request-move-article' to do the actual move. This function
-advises :around `gnus-request-move-article'. Always returns the
-result of `gnus-request-move-article'. When non-nil the article
-data in `gnus-recent--articles-list' is updated accordingly."
-  (let ((article-data (gnus-recent--get-article-data))
-        (result (funcall fn article group server accept-function last move-is-internal)))
-    (if (and article-data result)
-        (cl-nsubstitute (-replace-at 2 (nth 1 accept-function) article-data)
-                        article-data
-                        gnus-recent--articles-list
-                        :test 'equal :count 1))
-    result))
+(defun gnus-recent--track-move-article (action article from-group to-group select-method)
+  "Track the backend movement (B-m) of articles and update the article data in `gnus-recent--articles-list'.
+This function is applied by the abnormal hook
+`gnus-summary-article-move-hook'."
+  (when (eq action 'move)
+    (let ((article-data (gnus-recent--get-article-data)))
+      (cl-nsubstitute (-replace-at 2 to-group article-data)
+                      article-data
+                      gnus-recent--articles-list
+                      :test 'equal :count 1))))
 
-(advice-add 'gnus-request-move-article :around #'gnus-recent--track-move-article)
+(add-hook 'gnus-summary-article-move-hook 'gnus-recent--track-move-article)
 
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
