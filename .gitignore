@@ -1,3 +1,9 @@
 # backup, bytecode
 *~
+*.bkp
+*.orig
 *.elc
+
+# misc
+helm-tut.el
+
