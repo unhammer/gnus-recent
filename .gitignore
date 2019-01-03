@@ -1,3 +1,5 @@
 # backup, bytecode
 *~
+*.bkp
+*.orig
 *.elc
