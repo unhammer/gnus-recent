@@ -98,9 +98,11 @@ For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
 
 (add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
 
-(defun gnus-recent--track-move-article (action article from-group to-group select-method)
-  "Track the backend movement (B-m) of articles and update the article data in `gnus-recent--articles-list'.
-This function is applied by the abnormal hook
+(defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
+  "Track backend move (B-m) of articles.
+When ACTION is 'move, will change the group to TO-GROUP for the
+article data in `gnus-recent--articles-list', but only if the
+moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
     (let ((article-data (gnus-recent--get-article-data)))
@@ -157,7 +159,7 @@ Warn if RECENT can't be deconstructed as expected."
          (gnus-summary-refer-article message-id))))))
 
 (defun gnus-recent--create-org-link (recent)
-  "Return an `org-mode' link to RECENT Gnus article"
+  "Return an `org-mode' link to RECENT Gnus article."
   (gnus-recent--action
    recent
    (lambda (message-id group)
@@ -171,11 +173,11 @@ Warn if RECENT can't be deconstructed as expected."
                                           (substring (car recent) 0 48))))))
 
 (defun gnus-recent-kill-new-org-link (recent)
-  "Add to the kill-ring an `org-mode' link to RECENT Gnus article"
+  "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
   (kill-new (gnus-recent--create-org-link recent)))
 
 (defun gnus-recent-insert-org-link (recent)
-  "Insert an `org-mode' link to RECENT Gnus article"
+  "Insert an `org-mode' link to RECENT Gnus article."
   (insert (gnus-recent--create-org-link recent)))
 
 (defun gnus-recent-forget (recent)
