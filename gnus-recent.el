@@ -66,7 +66,7 @@
   :group 'gnus-recent)
 
 (defun gnus-recent--get-article-data ()
-  "Get the article data used for gnus-recent"
+  "Get the article data used for gnus-recent."
   (unless gnus-recent--showing-recent
     (set-buffer gnus-summary-buffer)
     (let ((article-number
@@ -169,7 +169,7 @@ Warn if RECENT can't be deconstructed as expected."
          (gnus-summary-refer-article message-id))))))
 
 (defun gnus-recent--create-org-link (recent)
-  "Return an `org-mode' link to RECENT Gnus article"
+  "Return an `org-mode' link to RECENT Gnus article."
   (gnus-recent--action
    recent
    (lambda (message-id group)
@@ -183,11 +183,11 @@ Warn if RECENT can't be deconstructed as expected."
                                           (substring (car recent) 0 48))))))
 
 (defun gnus-recent-kill-new-org-link (recent)
-  "Add to the kill-ring an `org-mode' link to RECENT Gnus article"
+  "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
   (kill-new (gnus-recent--create-org-link recent)))
 
 (defun gnus-recent-insert-org-link (recent)
-  "Insert an `org-mode' link to RECENT Gnus article"
+  "Insert an `org-mode' link to RECENT Gnus article."
   (insert (gnus-recent--create-org-link recent)))
 
 (defun gnus-recent-forget (recent)
