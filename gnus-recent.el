@@ -91,7 +91,6 @@
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
 For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
-  ;; DONE: Should track B-m's too!
   (let ((article-data (gnus-recent--get-article-data)))
     (when article-data
       (add-to-list 'gnus-recent--articles-list article-data)))
@@ -99,9 +98,11 @@ For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
 
 (add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
 
-(defun gnus-recent--track-move-article (action article from-group to-group select-method)
-  "Track the backend movement (B-m) of articles and update the article data in `gnus-recent--articles-list'.
-This function is applied by the abnormal hook
+(defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
+  "Track backend move (B-m) of articles.
+When ACTION is 'move, will change the group to TO-GROUP for the
+article data in `gnus-recent--articles-list', but only if the
+moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
     (let ((article-data (gnus-recent--get-article-data)))
