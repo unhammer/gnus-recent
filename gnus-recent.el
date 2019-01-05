@@ -46,7 +46,6 @@
 ;;; Code:
 
 (require 'gnus-sum)
-(require 'dash)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -106,7 +105,7 @@ moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
     (let ((article-data (gnus-recent--get-article-data)))
-      (cl-nsubstitute (-replace-at 2 to-group article-data)
+      (cl-nsubstitute (list (first article-data) (second article-data) to-group) 
                       article-data
                       gnus-recent--articles-list
                       :test 'equal :count 1))))
