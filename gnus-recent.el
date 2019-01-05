@@ -46,7 +46,6 @@
 ;;; Code:
 
 (require 'gnus-sum)
-(require 'dash)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
