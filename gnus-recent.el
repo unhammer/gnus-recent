@@ -184,7 +184,8 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
-  (kill-new (gnus-recent--create-org-link recent)))
+  (kill-new (gnus-recent--create-org-link recent))
+  (message "Added org-link to kill-ring"))
 
 (defun gnus-recent-insert-org-link (recent)
   "Insert an `org-mode' link to RECENT Gnus article."
@@ -192,9 +193,8 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defun gnus-recent-forget (recent)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'."
-  (setq gnus-recent--articles-list
-        (delete recent gnus-recent--articles-list))
-  (message "Removed %s from `gnus-recent--articles-list'" (car recent)))
+  (cl-delete recent gnus-recent--articles-list :test 'equal :count 1)
+    (message "Removed %s from gnus-recent articles" (car recent)))
 
 
 (provide 'gnus-recent)
