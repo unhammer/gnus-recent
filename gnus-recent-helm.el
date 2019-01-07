@@ -51,7 +51,8 @@
                     (action . (("Open article"               . gnus-recent--open-article)
                                ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
                                ("Insert org link"            . gnus-recent-insert-org-link)
-                               ("Remove article"             . gnus-recent-helm-forget)))))
+                               ("Remove article"             . gnus-recent-helm-forget)
+                               ("Clear all"                  . gnus-recent-forget-all)))))
         :buffer "*helm gnus recent*"))
 
 (defun gnus-recent-helm-forget (_recent)
@@ -60,7 +61,9 @@ Helm allows for marked articles or current selection. See
 function `helm-marked-candidates'. Argument _recent is not used."
   (let ((cand (helm-marked-candidates)))
     (dolist (article cand)
-      (cl-delete article gnus-recent--articles-list :test 'equal :count 1))
+      (if (equal article (car gnus-recent--articles-list))
+          (pop gnus-recent--articles-list)
+        (cl-delete article gnus-recent--articles-list :test 'equal :count 1)))
     (message "Removed %d article(s) from gnus-recent" (length cand))))
 
 (provide 'gnus-recent-helm)
