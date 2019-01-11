@@ -58,7 +58,7 @@
                     '(("l" gnus-recent-insert-org-link "insert org link")
                       ("c" gnus-recent-kill-new-org-link "copy org link")
                       ("k" gnus-recent-forget "forget")
-                      ("a" gnus-recent-forget-all "clear all"))))
+                      ("K" gnus-recent-forget-all "forget all"))))
 
 
 (provide 'gnus-recent-ivy)
