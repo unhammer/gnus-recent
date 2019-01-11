@@ -157,16 +157,13 @@ Warn if RECENT can't be deconstructed as expected."
      (message "Couldn't parse recent message: %S" recent))))
 
 (defun gnus-recent--open-article (recent)
-  "Open RECENT gnus article."
+  "Open RECENT gnus article using `org-gnus'."
+  (require 'org-gnus)
   (gnus-recent--action
    recent
    (lambda (message-id group)
-     (let* ((gnus-recent--showing-recent t))
-       (if (and (equal (current-buffer) gnus-summary-buffer)
-                (equal message-id (mail-header-id (gnus-summary-article-header))))
-           (call-interactively 'gnus-recent-goto-previous)
-         (gnus-summary-read-group group 1) ; have to show at least one old one
-         (gnus-summary-refer-article message-id))))))
+     (let ((gnus-recent--showing-recent t))
+       (org-gnus-follow-link group message-id)))))
 
 (defun gnus-recent--create-org-link (recent)
   "Return an `org-mode' link to RECENT Gnus article."
