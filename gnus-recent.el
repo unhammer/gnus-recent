@@ -64,28 +64,29 @@
   "Face used for dates in the recent article list."
   :group 'gnus-recent)
 
+(defun gnus-recent-date-format (date)
+  "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
+  (condition-case ()
+      (format-time-string "%F %T %a" (gnus-date-get-time date))
+    (error "")))
+
 (defun gnus-recent--get-article-data ()
-  "Get the article data used for gnus-recent."
-  (unless gnus-recent--showing-recent
-    (set-buffer gnus-summary-buffer)
-    (let ((article-number
-           ;; based on gnus-summary-article-header (a macro which fails here):
-           (gnus-data-header (gnus-data-find
-                              (progn
-                                (gnus-summary-skip-intangible)
-                                (or (get-text-property (point) 'gnus-number)
-                                    (gnus-summary-last-subject)))))))
-      (list
-       (format "%s: %s \t%s"
-               (propertize
-                (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
-                                          (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
-                                                                    (mail-header-from article-number)))
-                'face 'bold)
-               (mail-header-subject article-number)
-               (propertize (mail-header-date article-number) 'face 'gnus-recent-date-face))
-       (mail-header-id article-number)
-       gnus-newsgroup-name))))
+    "Get the article data used for `gnus-recent' based on `gnus-summary-article-header'."
+    (unless gnus-recent--showing-recent
+      (let* ((article-number (gnus-summary-article-number))
+             (article-header (gnus-summary-article-header article-number)))
+        (list
+         (format "%s: %s \t%s"
+                 (propertize
+                  (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
+                                            (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
+                                                                      (mail-header-from article-header)))
+                  'face 'bold)
+                 (mail-header-subject article-header)
+                 (propertize (gnus-recent-date-format (mail-header-date article-header))
+                             'face 'gnus-recent-date-face))
+         (mail-header-id article-header)
+         gnus-newsgroup-name))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
@@ -105,7 +106,7 @@ moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
     (let ((article-data (gnus-recent--get-article-data)))
-      (cl-nsubstitute (list (first article-data) (second article-data) to-group) 
+      (cl-nsubstitute (list (first article-data) (second article-data) to-group)
                       article-data
                       gnus-recent--articles-list
                       :test 'equal :count 1))))
@@ -148,7 +149,7 @@ article list is the article we're currently looking at."
            (gnus-summary-refer-article message-id)))))))
 
 (defun gnus-recent--action (recent func)
-  "Find message-id and group arguments from RECENT, call FUNC on them.
+  "Find `message-id' and group arguments from RECENT, call FUNC on them.
 Warn if RECENT can't be deconstructed as expected."
   (pcase recent
     (`(,_ . (,message-id ,group . ,_))
