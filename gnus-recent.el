@@ -196,6 +196,11 @@ Warn if RECENT can't be deconstructed as expected."
   (cl-delete recent gnus-recent--articles-list :test 'equal :count 1)
     (message "Removed %s from gnus-recent articles" (car recent)))
 
+(defun gnus-recent-forget-all (&rest _recent)
+  "Clear the gnus-recent articles list."
+  (interactive)
+  (setq gnus-recent--articles-list nil)
+  (message "Cleared all gnus-recent article entries"))
 
 (provide 'gnus-recent)
 ;;; gnus-recent.el ends here
