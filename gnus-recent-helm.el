@@ -61,9 +61,7 @@ Helm allows for marked articles or current selection. See
 function `helm-marked-candidates'. Argument _recent is not used."
   (let ((cand (helm-marked-candidates)))
     (dolist (article cand)
-      (setq gnus-recent--articles-list
-            (cl-delete  article gnus-recent--articles-list
-                        :test 'equal :count 1)))
+      (gnus-recent-forget article))
     (message "Removed %d article(s) from gnus-recent" (length cand))))
 
 (provide 'gnus-recent-helm)
