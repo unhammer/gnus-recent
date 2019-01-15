@@ -46,6 +46,7 @@
 ;;; Code:
 
 (require 'gnus-sum)
+(require 'org-gnus)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -96,8 +97,6 @@ For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
       (add-to-list 'gnus-recent--articles-list article-data)))
   (setq gnus-recent--showing-recent nil))
 
-(add-hook 'gnus-article-prepare-hook 'gnus-recent--track-article)
-
 (defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
   "Track backend move (B-m) of articles.
 When ACTION is 'move, will change the group to TO-GROUP for the
@@ -105,24 +104,35 @@ article data in `gnus-recent--articles-list', but only if the
 moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
-    (let ((article-data (gnus-recent--get-article-data)))
-      (cl-nsubstitute (list (first article-data) (second article-data) to-group)
-                      article-data
-                      gnus-recent--articles-list
-                      :test 'equal :count 1))))
+    (gnus-recent-update (gnus-recent--get-article-data) to-group)))
 
-(add-hook 'gnus-summary-article-move-hook 'gnus-recent--track-move-article)
-
-(defun gnus-recent--track-delete-article (action ghead group &rest rest)
-  "Track interactive user deletion of articles and remove the
-article data in `gnus-recent--articles-list'. This function is
-applied by the abnormal hook `gnus-summary-article-delete-hook'."
+(defun gnus-recent--track-delete-article (action _article _from-group &rest _rest)
+  "Track interactive user deletion of articles.
+Remove the article data in `gnus-recent--articles-list'.  ACTION
+should be 'delete.
+For use by `gnus-summary-article-delete-hook'."
   (when (eq action 'delete)
-    (cl-delete (gnus-recent--get-article-data)
-               gnus-recent--articles-list
-               :test 'equal :count 1)))
+    (gnus-recent-forget (gnus-recent--get-article-data))))
 
+(defun gnus-recent--track-expire-article (action _article _from-group to-group _select-method)
+  "Track when articles expire.
+Handle the article data in `gnus-recent--articles-list',
+according to the expiry ACTION.  TO-GROUP should have the value of
+the expiry-target group if set.
+For use by `gnus-summary-article-expire-hook'."
+  (when (eq action 'delete)
+    (let ((article-data (gnus-recent--get-article-data)))
+      (when (member article-data gnus-recent--articles-list)
+          (if to-group                  ; article moves to the expiry-target group
+              (gnus-recent-update article-data to-group)
+            (gnus-recent-forget article-data)))))) ; article is deleted
+
+;; Activate the hooks  (should be named -functions)
+;; Note: except for the 1st, the other hooks run using run-hook-with-args
+(add-hook 'gnus-article-prepare-hook        'gnus-recent--track-article)
+(add-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
 (add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
+(add-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
 
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
@@ -159,7 +169,6 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defun gnus-recent--open-article (recent)
   "Open RECENT gnus article using `org-gnus'."
-  (require 'org-gnus)
   (gnus-recent--action
    recent
    (lambda (message-id group)
@@ -189,10 +198,21 @@ Warn if RECENT can't be deconstructed as expected."
   "Insert an `org-mode' link to RECENT Gnus article."
   (insert (gnus-recent--create-org-link recent)))
 
-(defun gnus-recent-forget (recent)
-  "Remove RECENT Gnus article from `gnus-recent--articles-list'."
-  (cl-delete recent gnus-recent--articles-list :test 'equal :count 1)
-    (message "Removed %s from gnus-recent articles" (car recent)))
+(defun gnus-recent-update (recent to-group)
+  "Update RECENT Gnus article in `gnus-recent--articles-list'.
+The Gnus article has moved to group TO-GROUP."
+  (cl-nsubstitute (list (cl-first recent) (cl-second recent) to-group)
+                  recent
+                  gnus-recent--articles-list
+                  :test 'equal :count 1))
+
+(defun gnus-recent-forget (recent &optional print-msg)
+  "Remove RECENT Gnus article from `gnus-recent--articles-list'.
+When PRINT-MSG is non-nil, show a message about it."
+  (setq gnus-recent--articles-list
+        (cl-delete recent gnus-recent--articles-list :test 'equal :count 1))
+  (when print-msg
+    (message "Removed %s from gnus-recent articles" (car recent))))
 
 (defun gnus-recent-forget-all (&rest _recent)
   "Clear the gnus-recent articles list."
