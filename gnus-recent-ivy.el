@@ -53,12 +53,11 @@
             :action #'gnus-recent--open-article
             :require-match t))
 
-(eval-after-load 'ivy
-  '(ivy-add-actions #'gnus-recent-ivy
-                    '(("l" gnus-recent-insert-org-link "insert org link")
-                      ("c" gnus-recent-kill-new-org-link "copy org link")
-                      ("k" gnus-recent-forget "forget")
-                      ("K" gnus-recent-forget-all "forget all"))))
+(ivy-add-actions #'gnus-recent-ivy
+                 '(("l" gnus-recent-insert-org-link "insert org link")
+                   ("c" gnus-recent-kill-new-org-link "copy org link")
+                   ("k" gnus-recent-forget "forget")
+                   ("K" gnus-recent-forget-all "forget all")))
 
 
 (provide 'gnus-recent-ivy)
