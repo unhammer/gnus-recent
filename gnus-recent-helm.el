@@ -45,8 +45,15 @@
   "Select a recent Gnus article to open with `helm'."
   (interactive)
   (helm :sources `(((name . "Gnus recent articles")
-                    (candidates . ,(mapcar (lambda (item)
-                                             (cons (car item) item))
+                    (candidates . ,(mapcar (lambda (item) ; FIXME: this for proof of concept
+                                             (cons
+                                              (concat
+                                               (car item)
+                                               " [" (propertize
+                                                     (nth 2 item)
+                                                     'face '(:foreground "lightblue"))
+                                               "]")
+                                              item))
                                            gnus-recent--articles-list))
                     (action . (("Open article"               . gnus-recent--open-article)
                                ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
