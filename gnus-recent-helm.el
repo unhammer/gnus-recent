@@ -41,35 +41,123 @@
 (require 'gnus-recent)
 (require 'helm)
 
-(defun gnus-recent-helm ()
-  "Select a recent Gnus article to open with `helm'."
+(defvar gnus-recent-display-extra nil
+  "Display extra article info.")
+
+(defvar gnus-recent-helm-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map helm-map)
+    (define-key map (kbd "M-<up>") 'gnus-recent-helm-display-select)
+    map)
+  "Keymap for a `helm' source.")
+
+(defun gnus-recent-helm-display-select ()
+  "Select the level of article info to display.
+The user selects the article infromation display level. Currently only the
+  \"default\", \"To\" and \"Cc\" levels are implemented.
+The function will refresh the `helm' buffer to display the new level."
   (interactive)
-  (helm :sources `(((name . "Gnus recent articles")
-                    (candidates . ,(mapcar (lambda (item) ; FIXME: this for proof of concept
-                                             (cons
-                                              (concat
-                                               (car item)
-                                               " [" (propertize
-                                                     (nth 2 item)
-                                                     'face '(:foreground "lightblue"))
-                                               "]")
-                                              item))
-                                           gnus-recent--articles-list))
-                    (action . (("Open article"               . gnus-recent--open-article)
-                               ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
-                               ("Insert org link"            . gnus-recent-insert-org-link)
-                               ("Remove article"             . gnus-recent-helm-forget)
-                               ("Clear all"                  . gnus-recent-forget-all)))))
-        :buffer "*helm gnus recent*"))
+  (let ((display (read-char "Show level: default (d) | To (t) |  Cc (c): ")))
+    (cond
+     ((eq display ?t) (setq gnus-recent-display-extra 'To))
+     ((eq display ?c) (setq gnus-recent-display-extra 'Cc))
+     (t (setq gnus-recent-display-extra nil))))
+  (helm-refresh))
+
+(defun gnus-recent-helm-candidate-transformer (candidates source)
+  "Transform the `helm' data for the display level selected.
+This function acts on the filtered data, to show the selected
+display inforrmation. CANDIDATES is the list of filtered data.
+SOURCE is the `helm' source. Both argumente are passed by `helm',
+when the function is called. Also the `helm' multiline feature is
+turned on and off, as needed."
+  (pcase gnus-recent-display-extra
+    ('To (helm-attrset 'multiline nil source)
+         (mapcar #'gnus-recent-helm-candidates-display-to candidates))
+    ('Cc (helm-attrset 'multiline nil source)
+         (mapcar #'gnus-recent-helm-candidates-display-cc candidates))
+    (t (assq-delete-all 'multiline source)
+       candidates)))
+
+(defun gnus-recent-helm-candidates-display-default (item)
+  "The default text to display for each article.
+Is the function argument to `mapcar' for establishing the
+candidates default text. `Helm' uses this text to filter the
+articles list.
+For each article data ITEM in `gnus-recent--articles-list' it
+returns a cons cell (name . item), where name is the article
+display text."
+  (cons (concat (car item)
+                " ["
+                (propertize (alist-get 'group item) 'face '(:foreground "lightblue"))
+                "]")
+        item))
+
+(defun gnus-recent-helm-candidates-display-to (item)
+  "Display the To field for each article on a separate line.
+ITEM is the article data in `gnus-recent--articles-list'. Used as the function
+  argument to `mapcar.'"
+  (cons (concat (car item)
+                "\n    To: "
+                (alist-get 'To  (alist-get 'recipient item)))
+        item))
+
+(defun gnus-recent-helm-candidates-display-cc (item)
+  "Display the To and Cc fields for each article on separate lines.
+ITEM is the article data in `gnus-recent--articles-list'. Used as the function
+argument to `mapcar.'"
+  (cons (concat (car item)
+                "\n    To: "
+                (alist-get 'To  (alist-get 'recipient item))
+                (helm-aif (alist-get 'Cc  (alist-get 'recipient item))
+                    (concat "\n    Cc: " it)))
+        item))
+
+(defun gnus-recent-candidates ()
+  "Initialize the `helm' candidates data."
+  (mapcar #'gnus-recent-helm-candidates-display-default gnus-recent--articles-list))
 
 (defun gnus-recent-helm-forget (_recent)
   "Remove Gnus articles from `gnus-recent--articles-list' using `helm'.
 Helm allows for marked articles or current selection.  See
 function `helm-marked-candidates'.  Argument _recent is not used."
-  (let ((cand (helm-marked-candidates)))
+  (let* ((cand (helm-marked-candidates))
+         (l1-cand (length cand))
+         (l1-gral (length gnus-recent--articles-list)))
     (dolist (article cand)
-      (gnus-recent-forget article))
-    (message "Removed %d article(s) from gnus-recent" (length cand))))
+      (gnus-recent-forget article t))
+    (gnus-message 4
+                  "Removed %d of %d article(s) from gnus-recent"
+                  (- l1-gral (length gnus-recent--articles-list))
+                  l1-cand)))
+
+(defun gnus-recent-helm-forget-pa (recent)
+  "Forget current or marked articles without quiting `helm'.
+This is the persistent action defined for the helm session.
+Argument RECENT is the article data."
+  (gnus-recent-helm-forget recent)
+  (helm-delete-current-selection)
+  (helm-refresh))
+
+(defun gnus-recent-helm ()
+  "Use `helm' to filter throu the recently viewed Gnus articles.
+Also a number of possible actions are defined."
+  (interactive)
+  (helm :sources (helm-build-sync-source "Gnus recent articles"
+                   :keymap gnus-recent-helm-map
+                   :candidates 'gnus-recent-candidates
+                   :filtered-candidate-transformer  'gnus-recent-helm-candidate-transformer
+                   :persistent-action 'gnus-recent-helm-forget-pa
+                   :persistent-help "Forget current selection"
+                   :action '(("Open article"               . gnus-recent--open-article)
+                             ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
+                             ("Insert org link"            . gnus-recent-insert-org-link)
+                             ("Remove marked article(s)"   . gnus-recent-helm-forget)
+                             ("Clear all"                  . gnus-recent-forget-all)))
+        :buffer "*helm gnus recent*"
+        :truncate-lines t))
+
+
 
 (provide 'gnus-recent-helm)
 

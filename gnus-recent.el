@@ -51,9 +51,15 @@
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
 
+(defvar gnus-recent--test nil
+  "Test variable for read-in.")
+
 (defvar gnus-recent--showing-recent nil
   ;; TODO: isn't there some way of showing the calling function?
   "Internal variable; true iff we're currently showing a recent article.")
+
+(defvar gnus-recent-file  "~/.gnus-recent-data"
+  "The file to save the gnus-recent-articles list data.")
 
 (defgroup gnus-recent nil
   "Options for gnus-recent"
@@ -69,63 +75,81 @@
   "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
   (condition-case ()
       (format-time-string "%F %T %a" (gnus-date-get-time date))
-    (error "")))
+    (error "Error in date format conversion")))
+
+(defun gnus-recent-sender-display-name (sender &optional noname)
+  "Return the SENDER name or email address.
+If sender name is not found, use NONAME to provide a default or
+use an empty sting."
+    (condition-case ()
+        (replace-regexp-in-string
+         "\\([^\<]*\\) <\\(.*\\)>"
+         "\\1"
+         (replace-regexp-in-string
+          "\"\\([^\"]*\\)\" <\\(.*\\)>"
+          "\\1"
+          sender))
+      (error (or noname ""))))
 
 (defun gnus-recent--get-article-data ()
     "Get the article data used for `gnus-recent' based on `gnus-summary-article-header'."
     (unless gnus-recent--showing-recent
-      (let* ((article-number (gnus-summary-article-number))
-             (article-header (gnus-summary-article-header article-number)))
-        (list
-         (format "%s: %s \t%s"
-                 (propertize
-                  (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
-                                            (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
-                                                                      (mail-header-from article-header)))
-                  'face 'bold)
-                 (mail-header-subject article-header)
-                 (propertize (gnus-recent-date-format (mail-header-date article-header))
-                             'face 'gnus-recent-date-face))
-         (mail-header-id article-header)
-         gnus-newsgroup-name))))
+      (let* (;; not needed
+             ;; (article-number (gnus-summary-article-number))
+             ;; (article-header (gnus-summary-article-header article-number))
+             (article-header (gnus-summary-article-header))
+             (date  (gnus-recent-date-format (mail-header-date article-header)))
+             (subject (mail-header-subject article-header))
+             (author (mail-header-from article-header)))
+        (list (format "%s: %s \t%s"
+                      (propertize (gnus-recent-sender-display-name author) 'face 'bold)
+                      subject
+                      (propertize date 'face 'gnus-recent-date-face)) ; article-name (display text)
+              (cons 'group gnus-newsgroup-name)
+              (cons 'message-id (mail-header-id article-header))
+              (cons 'date date)
+              (cons 'subject subject)
+              (cons 'sender author)
+              (cons 'recipient (mail-header-extra article-header))))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
 For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
-  (let ((article-data (gnus-recent--get-article-data)))
-    (when article-data
-      (add-to-list 'gnus-recent--articles-list article-data)))
+  (gnus-recent-add-to-list (gnus-recent--get-article-data))
   (setq gnus-recent--showing-recent nil))
 
-(defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
+(defun gnus-recent--track-move-article (action article _from-group to-group _select-method)
   "Track backend move (B-m) of articles.
 When ACTION is 'move, will change the group to TO-GROUP for the
 article data in `gnus-recent--articles-list', but only if the
-moved article was already tracked.  For use by
-`gnus-summary-article-move-hook'."
+moved article was already tracked. ARTICLE is the gnus message
+header. For use by `gnus-summary-article-move-hook', so all
+arguments are passed by gnus."
   (when (eq action 'move)
-    (gnus-recent-update (gnus-recent--get-article-data) to-group)))
+    (if to-group
+        (gnus-recent-update-message-id (mail-header-id article) to-group)
+      (message-box "Move article to EmptyGroup! Probable Error!\n"))))
 
-(defun gnus-recent--track-delete-article (action _article _from-group &rest _rest)
+(defun gnus-recent--track-delete-article (action article _from-group &rest _rest)
   "Track interactive user deletion of articles.
-Remove the article data in `gnus-recent--articles-list'.  ACTION
-should be 'delete.
-For use by `gnus-summary-article-delete-hook'."
+Remove the article data in `gnus-recent--articles-list'. ACTION
+should be 'delete. ARTICLE is the gnus message header. For use by
+`gnus-summary-article-delet-hook', so all arguments are passed by
+gnus."
   (when (eq action 'delete)
-    (gnus-recent-forget (gnus-recent--get-article-data))))
+    (gnus-recent-forget-message-id (mail-header-id article))))
 
-(defun gnus-recent--track-expire-article (action _article _from-group to-group _select-method)
+(defun gnus-recent--track-expire-article (action article _from-group to-group _select-method)
   "Track when articles expire.
 Handle the article data in `gnus-recent--articles-list',
-according to the expiry ACTION.  TO-GROUP should have the value of
-the expiry-target group if set.
-For use by `gnus-summary-article-expire-hook'."
+according to the expiry ACTION. TO-GROUP should have the value of
+the expiry-target group if set. ARTICLE is the gnus message
+header passed when the hook is run. For use by
+`gnus-summary-article-expire-hook'."
   (when (eq action 'delete)
-    (let ((article-data (gnus-recent--get-article-data)))
-      (when (member article-data gnus-recent--articles-list)
-          (if to-group                  ; article moves to the expiry-target group
-              (gnus-recent-update article-data to-group)
-            (gnus-recent-forget article-data)))))) ; article is deleted
+    (if to-group                        ; article moves to the expiry-target group
+        (gnus-recent-update-message-id (mail-header-id article) to-group)
+      (gnus-recent-forget-message-id (mail-header-id article))))) ; article deleted
 
 ;; Activate the hooks  (should be named -functions)
 ;; Note: except for the 1st, the other hooks run using run-hook-with-args
@@ -169,25 +193,18 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defun gnus-recent--open-article (recent)
   "Open RECENT gnus article using `org-gnus'."
-  (gnus-recent--action
-   recent
-   (lambda (message-id group)
-     (let ((gnus-recent--showing-recent t))
-       (org-gnus-follow-link group message-id)))))
+  (org-gnus-follow-link (alist-get 'group recent) (alist-get 'message-id recent)))
 
 (defun gnus-recent--create-org-link (recent)
   "Return an `org-mode' link to RECENT Gnus article."
-  (gnus-recent--action
-   recent
-   (lambda (message-id group)
-      (format "[[gnus:%s#%s][Email from %s]]"
-                group
-                (replace-regexp-in-string "^<\\|>$"
-                                          ""
-                                          message-id)
-                (replace-regexp-in-string "[][]"
-                                          ""
-                                          (substring (car recent) 0 48))))))
+  (format "[[gnus:%s#%s][Email from %s]]"
+          (alist-get 'group recent)
+          (replace-regexp-in-string "^<\\|>$"
+                                    ""
+                                    (alist-get 'message-id recent))
+          (replace-regexp-in-string "[][]"
+                                    ""
+                                    (substring (car recent) 0 48))))
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
@@ -198,27 +215,126 @@ Warn if RECENT can't be deconstructed as expected."
   "Insert an `org-mode' link to RECENT Gnus article."
   (insert (gnus-recent--create-org-link recent)))
 
+(defun gnus-recent-update-message-id (message-id to-group)
+  "Update the Gnus article with MESSAGE-ID in `gnus-recent--articles-list'.
+The Gnus article has moved to group TO-GROUP."
+  (let ((article (gnus-recent-find-message-id message-id)))
+    (when article
+      (setf (alist-get 'group article) to-group))))
+
 (defun gnus-recent-update (recent to-group)
   "Update RECENT Gnus article in `gnus-recent--articles-list'.
 The Gnus article has moved to group TO-GROUP."
-  (cl-nsubstitute (list (cl-first recent) (cl-second recent) to-group)
-                  recent
-                  gnus-recent--articles-list
-                  :test 'equal :count 1))
+  (gnus-recent-update-message-id (alist-get 'message-id recent) to-group))
+
+(defun gnus-recent-forget-message-id (message-id &optional print-msg)
+  "Remove the Gnus article with MESSAGE-ID in `gnus-recent--articles-list'.
+When PRINT-MSG is non-nil, show a message about it."
+  (let ((l1 (length gnus-recent--articles-list))
+        (article (car gnus-recent--articles-list)))
+    ;; check for a match on the first article on list
+    (if (equal message-id (alist-get 'message-id article))
+        (pop gnus-recent--articles-list)
+      (setq article (gnus-recent-find-message-id message-id))
+      (cl-delete article gnus-recent--articles-list :test 'equal :count 1))
+    (when print-msg
+      (gnus-message 4 "Removed %d of 1 from gnus-recent articles" (- l1 (length gnus-recent--articles-list)))
+      (gnus-message 4 "Removed item: %s from gnus-recent articles" (car article)))))
 
 (defun gnus-recent-forget (recent &optional print-msg)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'.
 When PRINT-MSG is non-nil, show a message about it."
-  (setq gnus-recent--articles-list
-        (cl-delete recent gnus-recent--articles-list :test 'equal :count 1))
-  (when print-msg
-    (message "Removed %s from gnus-recent articles" (car recent))))
+  (gnus-recent-forget-message-id (alist-get 'message-id recent) print-msg))
 
 (defun gnus-recent-forget-all (&rest _recent)
   "Clear the gnus-recent articles list."
   (interactive)
   (setq gnus-recent--articles-list nil)
-  (message "Cleared all gnus-recent article entries"))
+  (gnus-message 4 "Cleared all gnus-recent article entries"))
+
+;; FIXME: this function text is only a placeholder.
+;; Now that gnus-recent uses the message-id to handle the articles in its'
+;; article list, there should be no duplicates entries. Still, this function will
+;; help with checking consistency, its just not that critical at the moment.
+(defun gnus-recent-alist-find-duplicates ()
+  "Find any duplicate entries in `gnus-recent--articles-list'.
+Duplicates entries are considered those that have the same
+message-id, even if some other property may differ such as the
+group value. It returns a list of message-ids that are found more
+than once."
+ (cl-find elem1 gnus-recent--articles-list))
+
+(defun gnus-recent-filter-prop (prop value)
+  "Return a list  of all articles with PROP equal to VALUE.
+Search the `gnus-recent--articles-list' for all elements with
+property PROP equal to value."
+  (seq-filter #'(lambda (item)
+                  (equal value (alist-get prop item)))
+              gnus-recent--articles-list))
+
+(defun gnus-recent-find-prop (prop value)
+  "Check for an article with the property value given.
+Find in `gnus-recent--articles-list' if there is a property PROP equal to VALUE.
+Returns the first article data when a match is found. It does not try
+to find any more matches."
+  (seq-find #'(lambda (item)
+            (equal value (alist-get prop item)))
+        gnus-recent--articles-list))
+
+(defun gnus-recent-find-message-id (message-id)
+  "Search the gnus-recent articles data by MESSAGE-ID.
+Returns the first article in `gnus-recent--articles-list' that
+matches the MESSAGE-ID provided. A convinience wrapper for
+`gnus-recent-find-prop'."
+  (gnus-recent-find-prop 'message-id  message-id))
+
+(defun gnus-recent-find-article (recent)
+  "Search the gnus-recent articles list for RECENT article.
+Returns the first article in `gnus-recent--articles-list' that
+matches the message-id of the RECENT article argument."
+  (gnus-recent-find-message-id (alist-get 'message-id recent)))
+
+(defun gnus-recent-add-to-list (recent)
+  "Add the RECENT article data to the articles list.
+Ensures the value for messsage-id is unique among all articles
+stored in `gnus-recent--articles-list'. See
+`gnus-recent--get-article-data' for the recent article data
+format."
+  (when recent
+    (unless (gnus-recent-find-message-id (alist-get 'message-id recent))
+      (push recent gnus-recent--articles-list))))
+
+;; TODO: can we save the diff, instead of everything ?
+(defun gnus-recent-save ()
+  "Save the gnus recent items to file for persistance."
+  (interactive)
+  (if (file-writable-p gnus-recent-file)
+      (progn
+        (gnus-message 5 "Saving gnus-recent data (%d items) to %s."
+                      (length gnus-recent--articles-list) gnus-recent-file)
+        (with-temp-file gnus-recent-file
+          (print gnus-recent--articles-list (current-buffer)))
+        (gnus-message 5 "Saving gnus-recent data done."))
+    (error "Error: can not save gnus-recent data to %s" gnus-recent-file)))
+
+(defun gnus-recent-read ()
+  "Read gnus-recent data from a previous session."
+  (gnus-message 5 "Reading gnus-recent data from %s." gnus-recent-file)
+  (setq gnus-recent--articles-list
+        (if (file-readable-p gnus-recent-file)
+            (read
+             (with-temp-buffer
+               (insert-file-contents gnus-recent-file)
+               (buffer-string)))
+          nil))
+  (gnus-message 5 "Read %d item(s) from %s... done."
+                (length gnus-recent--test) gnus-recent-file))
+
+(add-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
+(add-hook 'kill-emacs-hook 'gnus-recent-save)
+
+;; start gnus-recent session
+(gnus-recent-read)
 
 (provide 'gnus-recent)
 ;;; gnus-recent.el ends here
