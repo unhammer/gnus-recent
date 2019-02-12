@@ -44,12 +44,37 @@
 (defvar gnus-recent-display-extra nil
   "Display extra article info.")
 
+(defvar gnus-recent-display-levels '(nil 'To 'Cc)
+  "Display levels for extra article info.")
+
 (defvar gnus-recent-helm-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map helm-map)
-    (define-key map (kbd "M-<up>") 'gnus-recent-helm-display-select)
+    (define-key map (kbd "M-<up>") 'gnus-recent-helm-display-cycle)
     map)
   "Keymap for a `helm' source.")
+
+(defmacro gnus-recent-rot1 (ilst)
+  `(let ((x (pop ,ilst)))
+     (setq ,ilst (append ,ilst (list x)))
+     x))
+
+(defmacro gnus-recent-rot1r (ilst)       ;
+  `(let ((x (car (last ,ilst))))
+     (setq ,ilst (butlast ,ilst))
+     (push x ,ilst)
+     x))
+
+(defun gnus-recent-helm-display-cycle ()
+  "Select the level of article info to display.
+The user selects the article infromation display level. Currently only the
+  \"default\", \"To\" and \"Cc\" levels are implemented.
+The function will refresh the `helm' buffer to display the new level."
+  (interactive)
+  (setq gnus-recent-display-extra (pop gnus-recent-display-levels))
+  (setq gnus-recent-display-levels
+        (append gnus-recent-display-levels (list gnus-recent-display-extra)))
+  (helm-refresh))
 
 (defun gnus-recent-helm-display-select ()
   "Select the level of article info to display.
