@@ -328,7 +328,7 @@ format."
                (buffer-string)))
           nil))
   (gnus-message 5 "Read %d item(s) from %s... done."
-                (length gnus-recent--test) gnus-recent-file))
+                (length gnus-recent--articles-list) gnus-recent-file))
 
 (add-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
 (add-hook 'kill-emacs-hook 'gnus-recent-save)

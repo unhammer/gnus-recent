@@ -44,7 +44,7 @@
 (defvar gnus-recent-display-extra nil
   "Display extra article info.")
 
-(defvar gnus-recent-display-levels '(nil 'To 'Cc)
+(defvar gnus-recent-display-levels '(To Cc nil)
   "Display levels for extra article info.")
 
 (defvar gnus-recent-helm-map
@@ -55,25 +55,29 @@
   "Keymap for a `helm' source.")
 
 (defmacro gnus-recent-rot1 (ilst)
+  "Cycle left the list elements, return the first item.
+Argument ILST is the list to cycle its items."
   `(let ((x (pop ,ilst)))
-     (setq ,ilst (append ,ilst (list x)))
+     (nconc ,ilst (list x))
      x))
 
-(defmacro gnus-recent-rot1r (ilst)       ;
+(defmacro gnus-recent-rot1r (ilst)
+  "Cycle right the list elements, return the last item.
+Argument ILST is the list to cycle its items."
   `(let ((x (car (last ,ilst))))
-     (setq ,ilst (butlast ,ilst))
+     (nbutlast ,ilst)
      (push x ,ilst)
      x))
 
 (defun gnus-recent-helm-display-cycle ()
-  "Select the level of article info to display.
-The user selects the article infromation display level. Currently only the
-  \"default\", \"To\" and \"Cc\" levels are implemented.
-The function will refresh the `helm' buffer to display the new level."
+  "Cycle the levels of article info to display.
+The user interactively changes the article infromation display
+level. Currently only the \"default\", \"To\" and \"Cc\" levels
+are implemented. The function will refresh the `helm' buffer to
+display the new level."
   (interactive)
   (setq gnus-recent-display-extra (pop gnus-recent-display-levels))
-  (setq gnus-recent-display-levels
-        (append gnus-recent-display-levels (list gnus-recent-display-extra)))
+  (nconc gnus-recent-display-levels (list gnus-recent-display-extra))
   (helm-refresh))
 
 (defun gnus-recent-helm-display-select ()
