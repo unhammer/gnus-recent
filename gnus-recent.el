@@ -47,6 +47,7 @@
 
 (require 'gnus-sum)
 (require 'org-gnus)
+(require 'rfc2047)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -77,19 +78,27 @@
       (format-time-string "%F %T %a" (gnus-date-get-time date))
     (error "Error in date format conversion")))
 
-(defun gnus-recent-sender-display-name (sender &optional noname)
-  "Return the SENDER name or email address.
-If sender name is not found, use NONAME to provide a default or
-use an empty sting."
-    (condition-case ()
-        (replace-regexp-in-string
-         "\\([^\<]*\\) <\\(.*\\)>"
-         "\\1"
-         (replace-regexp-in-string
-          "\"\\([^\"]*\\)\" <\\(.*\\)>"
-          "\\1"
-          sender))
-      (error (or noname ""))))
+(defun gnus-recent-get-email (address &optional unbracket)
+  "Get the email portion of a gnus address.
+ADDRESS is a gnus sender or recipient address string. When optional
+argument UNBRACKET is non-nil, brackets will be trimmed from the
+email."
+  (car (last (split-string address " " t (and unbracket "<\\|>")))))
+
+(defun gnus-recent-get-email-name (address &optional use-email decode)
+  "Get the name portion of a gnus address.
+ADDRESS is a gnus sender or recipient address string. If a name is
+not found and USE-EMAIL is not nil, use the email address as
+default. If DECODE, the DISPLAY-NAME will have RFC2047 decoding
+performed."
+  (let ((x (split-string-and-unquote address)))
+    (if (eql 1 (length x))
+        (or (and use-email (car x)) "")
+      (let ((name (string-join (butlast x) " ")))
+        (if (and decode
+                 (string= "=?" (substring name 0 2)))
+            (org-strip-quotes (rfc2047-decode-address-string name))
+          name)))))
 
 (defun gnus-recent--get-article-data ()
     "Get the article data used for `gnus-recent' based on `gnus-summary-article-header'."
@@ -102,15 +111,15 @@ use an empty sting."
              (subject (mail-header-subject article-header))
              (author (mail-header-from article-header)))
         (list (format "%s: %s \t%s"
-                      (propertize (gnus-recent-sender-display-name author) 'face 'bold)
+                      (propertize (gnus-recent-get-email-name author t) 'face 'bold)
                       subject
-                      (propertize date 'face 'gnus-recent-date-face)) ; article-name (display text)
+                      (propertize date 'face 'gnus-recent-date-face))
               (cons 'group gnus-newsgroup-name)
               (cons 'message-id (mail-header-id article-header))
               (cons 'date date)
               (cons 'subject subject)
               (cons 'sender author)
-              (cons 'recipient (mail-header-extra article-header))))))
+              (cons 'recipients (mail-header-extra article-header))))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
@@ -252,6 +261,10 @@ When PRINT-MSG is non-nil, show a message about it."
   (setq gnus-recent--articles-list nil)
   (gnus-message 4 "Cleared all gnus-recent article entries"))
 
+(defun gnus-recent-bbdb-sender (recent)
+  )
+;; bbdb-search-mail (regexp &optional layout)
+
 ;; FIXME: this function text is only a placeholder.
 ;; Now that gnus-recent uses the message-id to handle the articles in its'
 ;; article list, there should be no duplicates entries. Still, this function will
@@ -319,6 +332,7 @@ format."
 
 (defun gnus-recent-read ()
   "Read gnus-recent data from a previous session."
+  (interactive)
   (gnus-message 5 "Reading gnus-recent data from %s." gnus-recent-file)
   (setq gnus-recent--articles-list
         (if (file-readable-p gnus-recent-file)

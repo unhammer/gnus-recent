@@ -128,7 +128,7 @@ ITEM is the article data in `gnus-recent--articles-list'. Used as the function
   argument to `mapcar.'"
   (cons (concat (car item)
                 "\n    To: "
-                (alist-get 'To  (alist-get 'recipient item)))
+                (alist-get 'To  (alist-get 'recipients item)))
         item))
 
 (defun gnus-recent-helm-candidates-display-cc (item)
@@ -137,8 +137,8 @@ ITEM is the article data in `gnus-recent--articles-list'. Used as the function
 argument to `mapcar.'"
   (cons (concat (car item)
                 "\n    To: "
-                (alist-get 'To  (alist-get 'recipient item))
-                (helm-aif (alist-get 'Cc  (alist-get 'recipient item))
+                (alist-get 'To  (alist-get 'recipients item))
+                (helm-aif (alist-get 'Cc  (alist-get 'recipients item))
                     (concat "\n    Cc: " it)))
         item))
 
@@ -169,7 +169,7 @@ Argument RECENT is the article data."
   (helm-refresh))
 
 (defun gnus-recent-helm ()
-  "Use `helm' to filter throu the recently viewed Gnus articles.
+  "Use `helm' to filter the recently viewed Gnus articles.
 Also a number of possible actions are defined."
   (interactive)
   (helm :sources (helm-build-sync-source "Gnus recent articles"
