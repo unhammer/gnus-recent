@@ -87,10 +87,10 @@ email."
 
 (defun gnus-recent-get-email-name (address &optional use-email decode)
   "Get the name portion of a gnus address.
-ADDRESS is a gnus sender or recipient address string. If a name is
-not found and USE-EMAIL is not nil, use the email address as
-default. If DECODE, the DISPLAY-NAME will have RFC2047 decoding
-performed."
+ADDRESS is a gnus sender or recipient address string. If a name
+is not found and USE-EMAIL is not nil, use the email address as
+default. If DECODE, RFC2047 decoding will be applied to the
+display-name."
   (let ((x (split-string-and-unquote address)))
     (if (eql 1 (length x))
         (or (and use-email (car x)) "")
@@ -109,7 +109,10 @@ performed."
              (article-header (gnus-summary-article-header))
              (date  (gnus-recent-date-format (mail-header-date article-header)))
              (subject (mail-header-subject article-header))
-             (author (mail-header-from article-header)))
+             (author (mail-header-from article-header))
+             (recipients (mail-header-extra article-header)))
+        (dolist (r recipients)
+          (setcdr r (rfc2047-decode-address-string (cdr r))))
         (list (format "%s: %s \t%s"
                       (propertize (gnus-recent-get-email-name author t) 'face 'bold)
                       subject
@@ -119,7 +122,7 @@ performed."
               (cons 'date date)
               (cons 'subject subject)
               (cons 'sender author)
-              (cons 'recipients (mail-header-extra article-header))))))
+              (cons 'recipients recipients)))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
