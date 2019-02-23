@@ -48,6 +48,7 @@
 (require 'gnus-sum)
 (require 'org-gnus)
 (require 'rfc2047)
+(require 'helm-lib)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -264,9 +265,39 @@ When PRINT-MSG is non-nil, show a message about it."
   (setq gnus-recent--articles-list nil)
   (gnus-message 4 "Cleared all gnus-recent article entries"))
 
-(defun gnus-recent-bbdb-sender (recent)
-  )
-;; bbdb-search-mail (regexp &optional layout)
+(defun gnus-recent-bbdb-display-all (recent)
+  "Display sender and recipients in BBDB.
+Diplay sender and all recipients in BBDB. Ask to create a BBDB entry, if not in
+BBDB. RECENT is the gnus-recent data for the selected article."
+  (let ((recipients (alist-get 'recipients recent))
+        (search-list '(bbdb-search (bbdb-records))))
+    (setq recipients (append (bbdb-split "," (or (alist-get 'sender recent) ""))
+                             (bbdb-split "," (or (alist-get 'To recipients) ""))
+                             (bbdb-split "," (or (alist-get 'Cc recipients) ""))))
+    (dolist (r recipients)              ; add new entries to BBDB (ask)
+      (bbdb-update-records (list (list (gnus-recent-get-email-name r t)
+                                       (gnus-recent-get-email r t)))
+                           'query t))
+    ;; (bbdb-update-records                ; add new entries to BBDB (ask)
+    ;;  (mapcar (lambda (r)                ; this also works, but sometimes skips remainders
+    ;;            (list (gnus-recent-get-email-name r t)
+    ;;                  (gnus-recent-get-email r t)))
+    ;;          recipients)
+    ;;  'query t)
+
+    ;; make an array (:mail email1 :mail email2 ...etc)
+    (dolist (r recipients search-list)
+      (helm-aif (gnus-recent-get-email r t)
+          (nconc search-list (list :mail it))))
+
+    ;; combine:
+    ;; (bbdb-display records (bbdb-search (bbdb-records :mail email1 :mail
+    ;; email2...etc)
+
+    (setq search-list (eval search-list))
+    (if search-list
+        (bbdb-display-records search-list 'multi-line nil)
+      (gnus-message 4 "No matching BBDB records found"))))
 
 ;; FIXME: this function text is only a placeholder.
 ;; Now that gnus-recent uses the message-id to handle the articles in its'

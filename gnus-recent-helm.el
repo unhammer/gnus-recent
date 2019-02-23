@@ -182,6 +182,7 @@ Also a number of possible actions are defined."
                              ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
                              ("Insert org link"            . gnus-recent-insert-org-link)
                              ("Remove marked article(s)"   . gnus-recent-helm-forget)
+                             ("Display BBDB entries"       . gnus-recent-bbdb-display-all)
                              ("Clear all"                  . gnus-recent-forget-all)))
         :buffer "*helm gnus recent*"
         :truncate-lines t))
