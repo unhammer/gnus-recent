@@ -118,7 +118,8 @@ returns a cons cell (name . item), where name is the article
 display text."
   (cons (concat (car item)
                 " ["
-                (propertize (alist-get 'group item) 'face '(:foreground "lightblue"))
+                (propertize (gnus-group-decoded-name (alist-get 'group item))
+                            'face '(:foreground "lightblue"))
                 "]")
         item))
 
