@@ -179,13 +179,6 @@ header passed when the hook is run. For use by
         (gnus-recent-update-message-id (mail-header-id article) to-group)
       (gnus-recent-forget-message-id (mail-header-id article))))) ; article deleted
 
-;; Activate the hooks  (should be named -functions)
-;; Note: except for the 1st, the other hooks run using run-hook-with-args
-(add-hook 'gnus-article-prepare-hook        'gnus-recent--track-article)
-(add-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
-(add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
-(add-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
-
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
   `(let ((top (pop ,lst)))
@@ -393,11 +386,39 @@ format."
   (gnus-message 5 "Read %d item(s) from %s... done."
                 (length gnus-recent--articles-list) gnus-recent-file))
 
-(add-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
-(add-hook 'kill-emacs-hook 'gnus-recent-save)
+(defun gnus-recent-start ()
+  "Start Gnus Recent."
+  (interactive)
+  (gnus-message 5 "Starting gnus-recent")
+  (gnus-recent-install-hooks)
+  (gnus-recent-read))
+
+(defun gnus-recent-add-hooks ()
+  "Install the gnus-recent hooks."
+  (interactive)
+  ;; Activate the hooks  (should be named -functions)
+  ;; Note: except for the 1st, the other hooks run using run-hook-with-args
+  (add-hook 'gnus-article-prepare-hook        'gnus-recent--track-article)
+  (add-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
+  (add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
+  (add-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
+  ;; hooks related to saving the data
+  (add-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
+  (add-hook 'kill-emacs-hook 'gnus-recent-save))
+
+(defun gnus-recent-remove-hooks ()
+  "Remove the gnus-recent hooks."
+  (interactive)
+  (remove-hook 'gnus-article-prepare-hook        'gnus-recent--track-article)
+  (remove-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
+  (remove-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
+  (remove-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
+  ;; hooks related to saving the data
+  (remove-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
+  (remove-hook 'kill-emacs-hook 'gnus-recent-save))
 
 ;; start gnus-recent session
-(gnus-recent-read)
+(gnus-recent-start)
 
 (provide 'gnus-recent)
 ;;; gnus-recent.el ends here
