@@ -119,7 +119,7 @@ display text."
   (cons (concat (car item)
                 " ["
                 (propertize (gnus-group-decoded-name (alist-get 'group item))
-                            'face '(:foreground "lightblue"))
+                            'face 'gnus-recent-group-face)
                 "]")
         item))
 

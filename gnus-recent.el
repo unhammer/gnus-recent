@@ -51,32 +51,47 @@
 (require 'helm-lib)
 
 (defvar gnus-recent--articles-list nil
-  "The list of articles read in this Emacs session.")
-
-(defvar gnus-recent--test nil
-  "Test variable for read-in.")
+  "The list of articles kept by gnus-recent.")
 
 (defvar gnus-recent--showing-recent nil
   ;; TODO: isn't there some way of showing the calling function?
   "Internal variable; true iff we're currently showing a recent article.")
 
-(defvar gnus-recent-file  "~/.gnus-recent-data"
-  "The file to save the gnus-recent-articles list data.")
-
 (defgroup gnus-recent nil
-  "Options for gnus-recent"
-  :tag "gnus-recent"
+  "Article breadcrumbs for gnus."
+  :tag "Gnus Recent"
   :group 'gnus)
+
+(defcustom gnus-recent-file  "~/.gnus-recent-data"
+  "The file to save the gnus-recent-articles list data."
+  :group 'gnus-recent
+  :type 'file)
+
+(defcustom gnus-recent-format-time-string "%F %T %a"
+  "A string for formating the article date.
+The format is used by `format-time-string'. See its documentation
+for details on format specifiers. For example, to produce a full
+ISO 8601 format, use \"%FT%T%z\", for org style use \"%F %T %a\".
+Changing this variable affects only new entries. Previous entries
+keep the old format."
+  :group 'gnus-recent
+  :type 'string)
+
+(defface gnus-recent-group-face
+  '((t . (:inherit font-lock-type-face :foreground "lightblue")))
+  "Face used for gnus group in the recent articles list."
+  :group 'gnus-recent)
 
 (defface gnus-recent-date-face
   '((t . (:inherit font-lock-type-face)))
-  "Face used for dates in the recent article list."
+  "Face used for dates in the recent articles list."
   :group 'gnus-recent)
 
 (defun gnus-recent-date-format (date)
-  "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
+  "Convert the DATE to string.
+Date format specified in `gnus-recent-format-time-string'."
   (condition-case ()
-      (format-time-string "%F %T %a" (gnus-date-get-time date))
+      (format-time-string gnus-recent-format-time-string (gnus-date-get-time date))
     (error "Error in date format conversion")))
 
 (defun gnus-recent-get-email (address &optional unbracket)
