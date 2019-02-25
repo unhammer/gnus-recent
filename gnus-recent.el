@@ -390,7 +390,7 @@ format."
   "Start Gnus Recent."
   (interactive)
   (gnus-message 5 "Starting gnus-recent")
-  (gnus-recent-install-hooks)
+  (gnus-recent-add-hooks)
   (gnus-recent-read))
 
 (defun gnus-recent-add-hooks ()
