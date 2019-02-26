@@ -47,6 +47,9 @@
 (defvar gnus-recent-display-levels '(To Cc nil)
   "Display levels for extra article info.")
 
+(defvar gnus-recent-helm-current-data-pa nil
+  "Keeps the recent article for the persistent action Hydra.")
+
 (defvar gnus-recent-helm-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map helm-map)
@@ -143,7 +146,7 @@ argument to `mapcar.'"
                     (concat "\n    Cc: " it)))
         item))
 
-(defun gnus-recent-candidates ()
+(defun gnus-recent-helm-candidates ()
   "Initialize the `helm' candidates data."
   (mapcar #'gnus-recent-helm-candidates-display-default gnus-recent--articles-list))
 
@@ -169,16 +172,35 @@ Argument RECENT is the article data."
   (helm-delete-current-selection)
   (helm-refresh))
 
+(defhydra hydra-gnus-recent-helm (:columns 3 :exit nil)
+  "Persistent actions"
+  ("c" (gnus-recent-kill-new-org-link gnus-recent-helm-current-data-pa) "Copy Org link")
+  ("b" (gnus-recent-bbdb-display-all gnus-recent-helm-current-data-pa) "BBDB entries")
+  ("K" (gnus-recent-helm-forget-pa gnus-recent-helm-current-data-pa) "Forget current")
+  ("{" helm-enlarge-window "helm window enlarge")
+  ("}" helm-narrow-window "helm window narrow")
+  (">" helm-toggle-truncate-line "helm toggle truncate lines")
+  ("_" helm-toggle-full-frame "helm toggle full frame")
+  ("Y" helm-yank-selection "helm yank selection")
+  ("U" helm-refresh "helm update source")
+  ("q" nil "quit" :exit t))
+
+(defun gnus-recent-helm-hydra-pa (recent)
+  "Persistent action activates a Hydra.
+RECENT is the current article in the helm buffer."
+  (setq gnus-recent-helm-current-data-pa recent)
+  (hydra-gnus-recent-helm/body))
+
 (defun gnus-recent-helm ()
   "Use `helm' to filter the recently viewed Gnus articles.
 Also a number of possible actions are defined."
   (interactive)
   (helm :sources (helm-build-sync-source "Gnus recent articles"
                    :keymap gnus-recent-helm-map
-                   :candidates 'gnus-recent-candidates
+                   :candidates 'gnus-recent-helm-candidates
                    :filtered-candidate-transformer  'gnus-recent-helm-candidate-transformer
-                   :persistent-action 'gnus-recent-helm-forget-pa
-                   :persistent-help "Forget current selection"
+                   :persistent-action 'gnus-recent-helm-hydra-pa
+                   :persistent-help "view hydra"
                    :action '(("Open article"               . gnus-recent--open-article)
                              ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
                              ("Insert org link"            . gnus-recent-insert-org-link)
