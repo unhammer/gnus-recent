@@ -49,6 +49,8 @@
 (require 'org-gnus)
 (require 'rfc2047)
 (require 'helm-lib)
+(require 'bbdb)
+(require 'bbdb-mua)
 
 (defvar gnus-recent--articles-list nil
   "The list of articles kept by gnus-recent.")
@@ -220,12 +222,11 @@ Warn if RECENT can't be deconstructed as expected."
   "Return an `org-mode' link to RECENT Gnus article."
   (format "[[gnus:%s#%s][Email from %s]]"
           (alist-get 'group recent)
-          (replace-regexp-in-string "^<\\|>$"
-                                    ""
+          (replace-regexp-in-string "^<\\|>$" ""
                                     (alist-get 'message-id recent))
-          (replace-regexp-in-string "[][]"
-                                    ""
-                                    (substring (car recent) 0 48))))
+          (bbdb-string-trim
+           (replace-regexp-in-string "[][\t]" ""
+                                     (substring (car recent) 0 48)))))
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
