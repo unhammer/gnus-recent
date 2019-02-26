@@ -271,8 +271,9 @@ When PRINT-MSG is non-nil, show a message about it."
 (defun gnus-recent-forget-all (&rest _recent)
   "Clear the gnus-recent articles list."
   (interactive)
-  (setq gnus-recent--articles-list nil)
-  (gnus-message 4 "Cleared all gnus-recent article entries"))
+  (when (yes-or-no-p "Action can not be undone. Are you sure? ")
+    (setq gnus-recent--articles-list nil)
+    (gnus-message 4 "Cleared all gnus-recent article entries")))
 
 (defun gnus-recent-bbdb-display-all (recent)
   "Display sender and recipients in BBDB.
@@ -366,11 +367,11 @@ format."
   (interactive)
   (if (file-writable-p gnus-recent-file)
       (progn
-        (gnus-message 5 "Saving gnus-recent data (%d items) to %s."
-                      (length gnus-recent--articles-list) gnus-recent-file)
+        (gnus-message 5 "Saving gnus-recent data to %s." gnus-recent-file)
         (with-temp-file gnus-recent-file
           (print gnus-recent--articles-list (current-buffer)))
-        (gnus-message 5 "Saving gnus-recent data done."))
+        (gnus-message 5 "Saving gnus-recent data (%d items) done."
+                      (length gnus-recent--articles-list)))
     (error "Error: can not save gnus-recent data to %s" gnus-recent-file)))
 
 (defun gnus-recent-read ()
@@ -386,6 +387,16 @@ format."
           nil))
   (gnus-message 5 "Read %d item(s) from %s... done."
                 (length gnus-recent--articles-list) gnus-recent-file))
+
+(defun gnus-recent-count-saved ()
+  "Count the number of articles saved in `gnus-recent-file'."
+  (interactive)
+  (if (file-readable-p gnus-recent-file)
+      (length (read
+               (with-temp-buffer
+                 (insert-file-contents gnus-recent-file)
+                 (buffer-string))))
+          nil))
 
 (defun gnus-recent-start ()
   "Start Gnus Recent."
