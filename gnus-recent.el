@@ -140,7 +140,8 @@ display-name."
               (cons 'date date)
               (cons 'subject subject)
               (cons 'sender author)
-              (cons 'recipients recipients)))))
+              (cons 'recipients recipients)
+              (cons 'references (mail-header-references article-header))))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
