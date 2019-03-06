@@ -59,6 +59,9 @@
   ;; TODO: isn't there some way of showing the calling function?
   "Internal variable; true iff we're currently showing a recent article.")
 
+(defvar gnus-recent--temp-message-headers nil
+  "A variable to temporarily place header data from an outgoing message.")
+
 (defgroup gnus-recent nil
   "Article breadcrumbs for gnus."
   :tag "Gnus Recent"
@@ -69,11 +72,11 @@
   :group 'gnus-recent
   :type 'file)
 
-(defcustom gnus-recent-format-time-string "%F %T %a"
+(defcustom gnus-recent-format-time-string "%F %a %T"
   "A string for formating the article date.
 The format is used by `format-time-string'. See its documentation
 for details on format specifiers. For example, to produce a full
-ISO 8601 format, use \"%FT%T%z\", for org style use \"%F %T %a\".
+ISO 8601 format, use \"%FT%T%z\", for org style use \"%F %a %T\".
 Changing this variable affects only new entries. Previous entries
 keep the old format."
   :group 'gnus-recent
@@ -213,7 +216,7 @@ Warn if RECENT can't be deconstructed as expected."
     (`(,_ . (,message-id ,group . ,_))
      (funcall func message-id group))
     (_
-     (message "Couldn't parse recent message: %S" recent))))
+     (gnus-message 3 "Couldn't parse recent message: %S" recent))))
 
 (defun gnus-recent--open-article (recent)
   "Open RECENT gnus article using `org-gnus'."
@@ -232,7 +235,7 @@ Warn if RECENT can't be deconstructed as expected."
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
   (kill-new (gnus-recent--create-org-link recent))
-  (message "Added org-link to kill-ring"))
+  (gnus-message 5 "Added org-link to kill-ring"))
 
 (defun gnus-recent-insert-org-link (recent)
   "Insert an `org-mode' link to RECENT Gnus article."
@@ -391,14 +394,62 @@ format."
 
 (defun gnus-recent-count-saved ()
   "Count the number of articles saved in `gnus-recent-file'."
-  (interactive)
   (if (file-readable-p gnus-recent-file)
       (length (read
                (with-temp-buffer
                  (insert-file-contents gnus-recent-file)
                  (buffer-string))))
-          nil))
+    nil))
 
+;;
+;; Track new messages
+;;
+(defun gnus-recent--track-message ()
+  "Add an newly sent message to the list of tracked articles.
+Is run from `message-sent-hook'. A alist of the message header
+data should be available on `gnus-recent--temp-message-headers'."
+  (interactive)
+  (let* ((hdrs gnus-recent--temp-message-headers)
+         (date (gnus-recent-date-format (alist-get 'date hdrs)))
+         (author (rfc2047-decode-address-string (or (alist-get 'from hdrs) "")))
+         (recipients (rassq-delete-all nil
+                                       (list (cons 'To (alist-get 'to hdrs))
+                                             (cons 'Cc (alist-get 'cc hdrs)))))
+         (to-first (car (bbdb-split "," (or (alist-get 'To recipients) "")))))
+    (dolist (r recipients)
+      (setcdr r (rfc2047-decode-address-string (cdr r))))
+    ;; This is a new message, can directly add to list... but better be safe.
+    (gnus-recent-add-to-list
+     (list (format "-> %s: %s \t%s"
+                   (propertize (gnus-recent-get-email-name to-first t) 'face 'bold)
+                   (alist-get 'subject hdrs)
+                   (propertize date 'face 'gnus-recent-date-face))
+           (cons 'group (alist-get 'gcc hdrs))
+           (cons 'message-id (alist-get 'message-id hdrs))
+           (cons 'date  date)
+           (cons 'subject (alist-get 'subject  hdrs))
+           (cons 'sender author)
+           (cons 'recipients recipients)
+           (cons 'references (alist-get 'references hdrs))
+           (cons 'in-reply-to (alist-get 'in-reply-to hdrs))))))
+
+(defun gnus-recent--get-message-data ()
+  "Get the headers from a new message.
+Returns a header alist, see function
+`mail-header-extract-no-properties'. Needs to run with the
+`message-header-hook' which applies narrowing to the message
+headers by default. Saves the header data to variable
+`gnus-recent--temp-message-header' so it can get out of the way
+as quickly as possible. After the message is sent,
+`gnus-recent--track-message' processes the header data and adds
+an entry to `gnus-recent--articles-list'."
+  (save-restriction
+    (goto-char (point-min))
+    (setq gnus-recent--temp-message-headers (mail-header-extract-no-properties))))
+
+;;
+;; starting gnus-recent
+;;
 (defun gnus-recent-start ()
   "Start Gnus Recent."
   (interactive)
@@ -415,6 +466,12 @@ format."
   (add-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
   (add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
   (add-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
+  ;; hooks for new messages
+  (add-hook 'message-header-hook 'gnus-recent--get-message-data)
+  ;; TODO: replace this hook call with an async call from gnus-recent--get-message-data.
+  ;;       Optimize later.
+  (add-hook 'message-sent-hook 'gnus-recent--track-message)
+
   ;; hooks related to saving the data
   (add-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
   (add-hook 'kill-emacs-hook 'gnus-recent-save))
@@ -426,6 +483,9 @@ format."
   (remove-hook 'gnus-summary-article-move-hook   'gnus-recent--track-move-article)
   (remove-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
   (remove-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
+  ;; hooks for new messages
+  (remove-hook 'message-header-hook 'gnus-recent--get-message-data)
+  (remove-hook 'message-sent-hook 'gnus-recent--track-message)
   ;; hooks related to saving the data
   (remove-hook 'gnus-save-newsrc-hook 'gnus-recent-save)
   (remove-hook 'kill-emacs-hook 'gnus-recent-save))
