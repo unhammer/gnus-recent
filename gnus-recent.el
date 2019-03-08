@@ -48,7 +48,6 @@
 (require 'gnus-sum)
 (require 'org-gnus)
 (require 'rfc2047)
-(require 'helm-lib)
 (require 'bbdb)
 (require 'bbdb-mua)
 
@@ -67,7 +66,7 @@
   :tag "Gnus Recent"
   :group 'gnus)
 
-(defcustom gnus-recent-file  "~/.gnus-recent-data"
+(defcustom gnus-recent-file  "~/.emacs.d/gnus-recent-data.el"
   "The file to save the gnus-recent-articles list data."
   :group 'gnus-recent
   :type 'file)
@@ -292,22 +291,16 @@ BBDB. RECENT is the gnus-recent data for the selected article."
       (bbdb-update-records (list (list (gnus-recent-get-email-name r t)
                                        (gnus-recent-get-email r t)))
                            'query t))
-    ;; (bbdb-update-records                ; add new entries to BBDB (ask)
-    ;;  (mapcar (lambda (r)                ; this also works, but sometimes skips remainders
-    ;;            (list (gnus-recent-get-email-name r t)
-    ;;                  (gnus-recent-get-email r t)))
-    ;;          recipients)
-    ;;  'query t)
 
     ;; make an array (:mail email1 :mail email2 ...etc)
     (dolist (r recipients search-list)
-      (helm-aif (gnus-recent-get-email r t)
-          (nconc search-list (list :mail it))))
+      (let ((it (gnus-recent-get-email r t))) ; anaphoric if
+        (if it
+            (nconc search-list (list :mail it)))))
 
     ;; combine:
     ;; (bbdb-display records (bbdb-search (bbdb-records :mail email1 :mail
     ;; email2...etc)
-
     (setq search-list (eval search-list))
     (if search-list
         (bbdb-display-records search-list 'multi-line nil)
