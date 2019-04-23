@@ -46,7 +46,8 @@
 ;;; Code:
 
 (require 'gnus-sum)
-(require 'org-gnus)
+(unless (require 'org-gnus nil 'noerror)
+  (require 'ol-gnus))
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
