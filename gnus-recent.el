@@ -66,7 +66,7 @@
   "Face used for dates in the recent article list."
   :group 'gnus-recent)
 
-(defun gnus-recent-date-format (date)
+(defun gnus-recent--date-format (date)
   "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
   (condition-case ()
       (format-time-string "%F %T %a" (gnus-date-get-time date))
@@ -77,25 +77,47 @@
     (unless gnus-recent--showing-recent
       (let* ((article-number (gnus-summary-article-number))
              (article-header (gnus-summary-article-header article-number)))
-        (list
-         (format "%s: %s \t%s"
-                 (propertize
-                  (replace-regexp-in-string "\\([^\<]*\\) <\\(.*\\)>" "\\1"
-                                            (replace-regexp-in-string "\"\\([^\"]*\\)\" <\\(.*\\)>" "\\1"
-                                                                      (mail-header-from article-header)))
-                  'face 'bold)
-                 (mail-header-subject article-header)
-                 (propertize (gnus-recent-date-format (mail-header-date article-header))
-                             'face 'gnus-recent-date-face))
-         (mail-header-id article-header)
-         gnus-newsgroup-name))))
+        (list (gnus-recent--pretty-article article-header)
+              (mail-header-id article-header)
+              gnus-newsgroup-name
+              (mail-header-from article-header)
+              (cdr (assoc 'To (mail-header-extra article-header)))
+              (mail-header-subject article-header)))))
+
+(defun gnus-recent--pretty-article (article-header)
+  "Format ARTICLE-HEADER for prompting the user."
+  (format "%s: %s \t%s"
+          (propertize (gnus-recent--name-from-address (mail-header-from article-header))
+                      'face
+                      'bold)
+          (mail-header-subject article-header)
+          (propertize (gnus-recent--date-format (mail-header-date article-header))
+                      'face
+                      'gnus-recent-date-face)))
+
+(defun gnus-recent--name-from-address (adr)
+  "Get the name (not e-mail) portion of e-mail ADR."
+  (replace-regexp-in-string
+   "\\([^<]*\\) <\\(.*\\)>"
+   "\\1"
+   (replace-regexp-in-string
+    "\"\\([^\"]*\\)\" <\\(.*\\)>"
+    "\\1"
+    adr)))
+
+(defmacro gnus-recent--add-to-front (lst elt)
+  "Add ELT to the front of LST, ensuring it's only once in the list.
+The comparison is done with `equal'."
+  `(setq ,lst (cons ,elt
+                    (remove ,elt ,lst))))
 
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
 For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
   (let ((article-data (gnus-recent--get-article-data)))
     (when article-data
-      (add-to-list 'gnus-recent--articles-list article-data)))
+      (gnus-recent--add-to-front gnus-recent--articles-list
+                                 article-data)))
   (setq gnus-recent--showing-recent nil))
 
 (defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
@@ -151,7 +173,7 @@ article list is the article we're currently looking at."
         (message "No recent article to show")
       (gnus-recent--action
        (gnus-recent--shift gnus-recent--articles-list)
-       (lambda (message-id group)
+       (lambda (message-id group from to subject)
          (if (and (not no-retry)
                   (equal (current-buffer) gnus-summary-buffer)
                   (equal message-id (mail-header-id (gnus-summary-article-header))))
@@ -163,8 +185,8 @@ article list is the article we're currently looking at."
   "Find `message-id' and group arguments from RECENT, call FUNC on them.
 Warn if RECENT can't be deconstructed as expected."
   (pcase recent
-    (`(,_ . (,message-id ,group . ,_))
-     (funcall func message-id group))
+    (`(,_ . (,message-id ,group ,from ,to ,subject . ,_))
+     (funcall func message-id group from to subject))
     (_
      (message "Couldn't parse recent message: %S" recent))))
 
@@ -172,7 +194,7 @@ Warn if RECENT can't be deconstructed as expected."
   "Open RECENT gnus article using `org-gnus'."
   (gnus-recent--action
    recent
-   (lambda (message-id group)
+   (lambda (message-id group from to subject)
      (let ((gnus-recent--showing-recent t))
        (org-gnus-follow-link group message-id)))))
 
@@ -180,15 +202,21 @@ Warn if RECENT can't be deconstructed as expected."
   "Return an `org-mode' link to RECENT Gnus article."
   (gnus-recent--action
    recent
-   (lambda (message-id group)
-      (format "[[gnus:%s#%s][Email from %s]]"
-                group
-                (replace-regexp-in-string "^<\\|>$"
-                                          ""
-                                          message-id)
-                (replace-regexp-in-string "[][]"
-                                          ""
-                                          (substring (car recent) 0 48))))))
+   (lambda (message-id group from to subject)
+     (let* ((fromto
+             (gnus-recent--name-from-address
+              (if (and from
+                       to
+                       (boundp 'org-from-is-user-regexp)
+                       org-from-is-user-regexp
+                       (string-match org-from-is-user-regexp from))
+                  (concat "to " to)
+                (concat "from " from)))))
+       (format "[[gnus:%s#%s][Email %s: %s]]"
+               group
+               (replace-regexp-in-string "^<\\|>$" "" message-id)
+               (replace-regexp-in-string "[][]" "" fromto)
+               (replace-regexp-in-string "[][]" "" subject))))))
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
