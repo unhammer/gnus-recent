@@ -51,7 +51,8 @@
   (ivy-read "Recent article: "
             gnus-recent--articles-list
             :action #'gnus-recent--open-article
-            :require-match t))
+            :require-match t
+            :re-builder #'ivy--regex-plus))
 
 (ivy-add-actions #'gnus-recent-ivy
                  '(("l" gnus-recent-insert-org-link "insert org link")
