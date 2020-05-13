@@ -1,6 +1,7 @@
 #+TITLE: gnus-recent
 
-# [[https://melpa.org/#/gnus-recent][https://melpa.org/packages/gnus-recent-badge.svg]]
+[[https://melpa.org/#/gnus-recent][https://melpa.org/packages/gnus-recent-badge.svg]]
+[[https://stable.melpa.org/#/gnus-recent][https://stable.melpa.org/packages/gnus-recent-badge.svg]]
 
 Avoid having to open Gnus and find the right Group just to get back to
 that e-mail you were reading.
