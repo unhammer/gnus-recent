@@ -17,13 +17,16 @@ just picking one with [[https://github.com/abo-abo/swiper/][ivy]]:
 
 * Installation
 
-# ** MELPA
-# If you use [[https://melpa.org/][MELPA]], you can just do =M-x list-packages=, find
-# =gnus-recent= in the list and hit =i x=.
+** MELPA
+If you use [[https://melpa.org/][MELPA]], you can just do =M-x list-packages=, find
+=gnus-recent= in the list and hit =i x=.
+
+The Melpa packages doesn't include the ivy/helm stuff, you'll have to
+add those manually for now.
 
 ** Manual
-Just put =gnus-recent.el= (and optionally =gnus-recent-ivy.el=)
-somewhere in =load-path=.
+Just put =gnus-recent.el= (and optionally =gnus-recent-ivy.el= /
+=gnus-recent-helm.el=) somewhere in =load-path=.
 
 
 * Usage

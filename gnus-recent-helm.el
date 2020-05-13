@@ -1,7 +1,7 @@
 ;;; gnus-recent-helm.el --- select recently read Gnus articles with helm -*- lexical-binding: t -*-
 ;;
-;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.3.2") (gnus-recent "0.2.0") (helm))
+;; Version: 0.3.0
+;; Package-Requires: ((emacs "25.3.2") (gnus-recent "0.3.0") (helm))
 ;; Keywords: convenience, mail
 
 ;; This file is not part of GNU Emacs.

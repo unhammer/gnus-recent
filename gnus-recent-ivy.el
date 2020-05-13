@@ -3,9 +3,9 @@
 ;; Copyright (C) 2018 Kevin Brubeck Unhammer
 
 ;; Author: Kevin Brubeck Unhammer <unhammer@fsfe.org>
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; URL: https://github.com/unhammer/gnus-recent
-;; Package-Requires: ((emacs "25.3.2") (gnus-recent "0.2.0") (ivy "0.9.0"))
+;; Package-Requires: ((emacs "25.3.2") (gnus-recent "0.3.0") (ivy "0.9.0"))
 ;; Keywords: convenience, mail
 
 ;; This file is not part of GNU Emacs.

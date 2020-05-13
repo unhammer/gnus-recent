@@ -1,9 +1,9 @@
 ;;; gnus-recent.el --- article breadcrumbs for Gnus -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018 Kevin Brubeck Unhammer
+;; Copyright (C) 2018-2020 Kevin Brubeck Unhammer
 
 ;; Author: Kevin Brubeck Unhammer <unhammer@fsfe.org>
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; URL: https://github.com/unhammer/gnus-recent
 ;; Package-Requires: ((emacs "25.3.2"))
 ;; Keywords: convenience, mail
