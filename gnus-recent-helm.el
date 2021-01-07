@@ -48,14 +48,14 @@
                     (candidates . ,(mapcar (lambda (item)
                                              (cons (car item) item))
                                            gnus-recent--articles-list))
-                    (action . (("Open article"               . gnus-recent--open-article)
+                    (action . (("Open article"               . gnus-recent-open-article)
                                ("Copy org link to kill ring" . gnus-recent-kill-new-org-link)
                                ("Insert org link"            . gnus-recent-insert-org-link)
-                               ("Remove article"             . gnus-recent-helm-forget)
+                               ("Remove article"             . gnus-recent--helm-forget)
                                ("Clear all"                  . gnus-recent-forget-all)))))
         :buffer "*helm gnus recent*"))
 
-(defun gnus-recent-helm-forget (_recent)
+(defun gnus-recent--helm-forget (_recent)
   "Remove Gnus articles from `gnus-recent--articles-list' using `helm'.
 Helm allows for marked articles or current selection.  See
 function `helm-marked-candidates'.  Argument _recent is not used."

@@ -1,9 +1,9 @@
-;;; gnus-recent.el --- article breadcrumbs for Gnus -*- lexical-binding: t -*-
+;;; gnus-recent.el --- Article breadcrumbs for Gnus -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2020 Kevin Brubeck Unhammer
+;; Copyright (C) 2018-2021 Kevin Brubeck Unhammer
 
 ;; Author: Kevin Brubeck Unhammer <unhammer@fsfe.org>
-;; Version: 0.3.0
+;; Version: 0.4.0
 ;; URL: https://github.com/unhammer/gnus-recent
 ;; Package-Requires: ((emacs "25.3.2"))
 ;; Keywords: convenience, mail
@@ -31,23 +31,17 @@
 ;;; To use, require and bind whatever keys you prefer to the
 ;;; interactive functions:
 ;;;
-;;; (require 'gnus-recent)
-;;; (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous)
-;;; (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous)
-
-;;; If you prefer `use-package', the above settings would be:
-;;;
 ;;; (use-package gnus-recent
 ;;;   :after gnus
-;;;   :config
-;;;   (define-key gnus-summary-mode-map (kbd "l") #'gnus-recent-goto-previous)
-;;;   (define-key gnus-group-mode-map (kbd "C-c L") #'gnus-recent-goto-previous))
+;;;   :bind (("<f3>" . gnus-recent)
+;;;          :map gnus-summary-mode-map ("l" . gnus-recent-goto-previous)
+;;;          :map gnus-group-mode-map ("C-c L" . gnus-recent-goto-previous)))
 
 ;;; Code:
 
 (require 'gnus-sum)
 (unless (require 'org-gnus nil 'noerror)
-  (require 'ol-gnus))
+  (require 'ol-gnus))                   ; for org-gnus-follow-link
 
 (defvar gnus-recent--articles-list nil
   "The list of articles read in this Emacs session.")
@@ -127,7 +121,7 @@ article data in `gnus-recent--articles-list', but only if the
 moved article was already tracked.  For use by
 `gnus-summary-article-move-hook'."
   (when (eq action 'move)
-    (gnus-recent-update (gnus-recent--get-article-data) to-group)))
+    (gnus-recent--update (gnus-recent--get-article-data) to-group)))
 
 (defun gnus-recent--track-delete-article (action _article _from-group &rest _rest)
   "Track interactive user deletion of articles.
@@ -147,7 +141,7 @@ For use by `gnus-summary-article-expire-hook'."
     (let ((article-data (gnus-recent--get-article-data)))
       (when (member article-data gnus-recent--articles-list)
           (if to-group                  ; article moves to the expiry-target group
-              (gnus-recent-update article-data to-group)
+              (gnus-recent--update article-data to-group)
             (gnus-recent-forget article-data)))))) ; article is deleted
 
 ;; Activate the hooks  (should be named -functions)
@@ -190,13 +184,16 @@ Warn if RECENT can't be deconstructed as expected."
     (_
      (message "Couldn't parse recent message: %S" recent))))
 
-(defun gnus-recent--open-article (recent)
+(defun gnus-recent (recent)
   "Open RECENT gnus article using `org-gnus'."
+  (interactive (list (gnus-recent--completing-read)))
   (gnus-recent--action
    recent
    (lambda (message-id group from to subject)
      (let ((gnus-recent--showing-recent t))
        (org-gnus-follow-link group message-id)))))
+
+(defalias 'gnus-recent--open-article 'gnus-recent)
 
 (defun gnus-recent--create-org-link (recent)
   "Return an `org-mode' link to RECENT Gnus article."
@@ -220,14 +217,16 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
+  (interactive (list (gnus-recent--completing-read)))
   (kill-new (gnus-recent--create-org-link recent))
   (message "Added org-link to kill-ring"))
 
 (defun gnus-recent-insert-org-link (recent)
   "Insert an `org-mode' link to RECENT Gnus article."
+  (interactive (list (gnus-recent--completing-read)))
   (insert (gnus-recent--create-org-link recent)))
 
-(defun gnus-recent-update (recent to-group)
+(defun gnus-recent--update (recent to-group)
   "Update RECENT Gnus article in `gnus-recent--articles-list'.
 The Gnus article has moved to group TO-GROUP."
   (cl-nsubstitute (list (cl-first recent) (cl-second recent) to-group)
@@ -238,6 +237,7 @@ The Gnus article has moved to group TO-GROUP."
 (defun gnus-recent-forget (recent &optional print-msg)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'.
 When PRINT-MSG is non-nil, show a message about it."
+  (interactive (list (gnus-recent--completing-read)))
   (setq gnus-recent--articles-list
         (cl-delete recent gnus-recent--articles-list :test 'equal :count 1))
   (when print-msg
@@ -248,6 +248,28 @@ When PRINT-MSG is non-nil, show a message about it."
   (interactive)
   (setq gnus-recent--articles-list nil)
   (message "Cleared all gnus-recent article entries"))
+
+(defvar gnus-recent--actions
+  (let ((map (make-sparse-keymap)))
+    (define-key map "l" #'gnus-recent-insert-org-link)
+    (define-key map "c" #'gnus-recent-kill-new-org-link)
+    (define-key map "k" #'gnus-recent-forget)
+    (define-key map "K" #'gnus-recent-forget-all)
+    map))
+
+(defun gnus-recent-embark-minibuffer-hook ()
+  "Use as `minibuffer-setup-hook' if using Embark."
+  (when (eq this-command 'gnus-recent)
+    (setq-local embark-overriding-keymap gnus-recent--actions)))
+
+(defun gnus-recent--completing-read ()
+  "Pick an article using `completing-read'."
+  (when-let ((match (completing-read "Recent article: "
+                                     gnus-recent--articles-list
+                                     nil
+                                     'require-match)))
+    (assoc match gnus-recent--articles-list)))
+
 
 (provide 'gnus-recent)
 ;;; gnus-recent.el ends here
