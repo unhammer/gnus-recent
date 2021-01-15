@@ -31,6 +31,7 @@ Require and bind whatever keys you prefer to the interactive function:
   (use-package gnus-recent
     :ensure t  ; if you want it from MELPA
     ; :load-path "~/src/gnus-recent" ; if you're running from a git clone
+    :demand t ; so that it's loaded after gnus even though we use :bind
     :after gnus
     :bind (("<f3>" . gnus-recent)
            :map gnus-summary-mode-map ("l" . gnus-recent-goto-previous)

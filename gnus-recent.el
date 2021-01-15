@@ -264,11 +264,12 @@ When PRINT-MSG is non-nil, show a message about it."
 
 (defun gnus-recent--completing-read ()
   "Pick an article using `completing-read'."
-  (when-let ((match (completing-read "Recent article: "
-                                     gnus-recent--articles-list
-                                     nil
-                                     'require-match)))
-    (assoc match gnus-recent--articles-list)))
+  (let ((selectrum-should-sort-p nil))
+    (when-let ((match (completing-read "Recent article: "
+                                       gnus-recent--articles-list
+                                       nil
+                                       'require-match)))
+      (assoc match gnus-recent--articles-list))))
 
 
 (provide 'gnus-recent)
