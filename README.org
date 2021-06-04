@@ -54,3 +54,11 @@ Doing =gnus-recent= will let you pick an article to re-open.
 
 If you use =gnus-recent-ivy=, you can hit =M-o l= to insert an
 =org-mode= link to the article instead.
+
+* Alternatives
+
+- [[https://github.com/deusmax/gnus-notes][gnus-notes]] is a fork of =gnus-recent= which adds some more features
+  (persistence, get a Helm list of Gnus links of the current Org
+  subtree, etc.)
+- [[https://www.gnu.org/software/emacs/manual/html_node/gnus/The-Gnus-Registry.html][The Gnus Registry]] might be persuaded to do =gnus-recent='s job if
+  you ask it nicely
