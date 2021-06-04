@@ -51,14 +51,14 @@
   "Internal variable; true iff we're currently showing a recent article.")
 
 (defgroup gnus-recent nil
-  "Options for gnus-recent"
+  "Options for gnus-recent."
   :tag "gnus-recent"
   :group 'gnus)
 
-(defface gnus-recent-date-face
-  '((t . (:inherit font-lock-type-face)))
-  "Face used for dates in the recent article list."
-  :group 'gnus-recent)
+(defcustom gnus-recent-track-sent t
+  "Should we track sent emails as well?"
+  :group 'gnus-recent
+  :type 'boolean)
 
 (defun gnus-recent--date-format (date)
   "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
@@ -67,16 +67,16 @@
     (error "")))
 
 (defun gnus-recent--get-article-data ()
-    "Get the article data used for `gnus-recent' based on `gnus-summary-article-header'."
-    (unless gnus-recent--showing-recent
-      (let* ((article-number (gnus-summary-article-number))
-             (article-header (gnus-summary-article-header article-number)))
-        (list (gnus-recent--pretty-article article-header)
-              (mail-header-id article-header)
-              gnus-newsgroup-name
-              (mail-header-from article-header)
-              (cdr (assoc 'To (mail-header-extra article-header)))
-              (mail-header-subject article-header)))))
+  "Get the article data used for `gnus-recent' based on `gnus-summary-article-header'."
+  (unless gnus-recent--showing-recent
+    (let* ((article-number (gnus-summary-article-number))
+           (article-header (gnus-summary-article-header article-number)))
+      (list (gnus-recent--pretty-article article-header)
+            (mail-header-id article-header)
+            gnus-newsgroup-name
+            (mail-header-from article-header)
+            (cdr (assoc 'To (mail-header-extra article-header)))
+            (mail-header-subject article-header)))))
 
 (defun gnus-recent--pretty-article (article-header)
   "Format ARTICLE-HEADER for prompting the user."
@@ -88,6 +88,19 @@
           (propertize (gnus-recent--date-format (mail-header-date article-header))
                       'face
                       'gnus-recent-date-face)))
+
+(defun gnus-recent--get-sent-data (message-id group from to subject date)
+  "Get the article data used for `gnus-recent' for a sent message.
+Arguments MESSAGE-ID FROM SUBJECT DATE as in `make-full-mail-header',
+GROUP is the newsgroup-name, TO is recipient."
+  (unless gnus-recent--showing-recent
+    (list (gnus-recent--pretty-article
+           (make-full-mail-header nil subject from date message-id))
+          message-id
+          group
+          from
+          to
+          subject)))
 
 (defun gnus-recent--name-from-address (adr)
   "Get the name (not e-mail) portion of e-mail ADR."
@@ -105,14 +118,18 @@ The comparison is done with `equal'."
   `(setq ,lst (cons ,elt
                     (remove ,elt ,lst))))
 
+(defun gnus-recent--track (article-data)
+  "Store message described by ARTICLE-DATA in the recent article list.
+For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
+  (when article-data
+    (gnus-recent--add-to-front gnus-recent--articles-list
+                               article-data))
+  (setq gnus-recent--showing-recent nil))
+
 (defun gnus-recent--track-article ()
   "Store this article in the recent article list.
 For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
-  (let ((article-data (gnus-recent--get-article-data)))
-    (when article-data
-      (gnus-recent--add-to-front gnus-recent--articles-list
-                                 article-data)))
-  (setq gnus-recent--showing-recent nil))
+  (gnus-recent--track (gnus-recent--get-article-data)))
 
 (defun gnus-recent--track-move-article (action _article _from-group to-group _select-method)
   "Track backend move (B-m) of articles.
@@ -151,6 +168,33 @@ For use by `gnus-summary-article-expire-hook'."
 (add-hook 'gnus-summary-article-delete-hook 'gnus-recent--track-delete-article)
 (add-hook 'gnus-summary-article-expire-hook 'gnus-recent--track-expire-article)
 
+;; Track sent mail:
+(defvar-local gnus-recent--latest-gcc nil
+  "The value of the Gcc header as seen on sending, or nil.")
+
+(defun gnus-recent--track-gcc-on-send ()
+  "Use as `message-send-hook' to take note of the Gcc field.
+Gcc is removed on send, so need to store it for tracking.  If
+there are several Gcc fields, we use the first one."
+  (setq-local gnus-recent--latest-gcc (mail-fetch-field "gcc")))
+
+(defun gnus-recent--track-sent-message ()
+  "Use as `message-send-hook' to track this message in `gnus-recent'."
+  (when-let ((group (string-trim gnus-recent--latest-gcc ; is quoted if it has spaces
+                                 "\"" "\""))
+             (message-id (mail-fetch-field "Message-ID")))
+    (gnus-recent--track (gnus-recent--get-sent-data
+                         message-id
+                         group
+                         (mail-fetch-field "From")
+                         (mail-fetch-field "To")
+                         (mail-fetch-field "Subject")
+                         (mail-fetch-field "Date")))))
+
+(add-hook 'message-send-hook #'gnus-recent--track-gcc-on-send)
+(add-hook 'message-sent-hook #'gnus-recent--track-sent-message)
+
+
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
   `(let ((top (pop ,lst)))
@@ -167,7 +211,7 @@ article list is the article we're currently looking at."
         (message "No recent article to show")
       (gnus-recent--action
        (gnus-recent--shift gnus-recent--articles-list)
-       (lambda (message-id group from to subject)
+       (lambda (message-id group _from _to _subject)
          (if (and (not no-retry)
                   (equal (current-buffer) gnus-summary-buffer)
                   (equal message-id (mail-header-id (gnus-summary-article-header))))
@@ -184,12 +228,13 @@ Warn if RECENT can't be deconstructed as expected."
     (_
      (message "Couldn't parse recent message: %S" recent))))
 
+(declare-function org-gnus-follow-link "ol-gnus" (&optional group article))
 (defun gnus-recent (recent)
   "Open RECENT gnus article using `org-gnus'."
   (interactive (list (gnus-recent--completing-read)))
   (gnus-recent--action
    recent
-   (lambda (message-id group from to subject)
+   (lambda (message-id group _from _to _subject)
      (let ((gnus-recent--showing-recent t))
        (org-gnus-follow-link group message-id)))))
 
