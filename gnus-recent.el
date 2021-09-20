@@ -60,6 +60,11 @@
   :group 'gnus-recent
   :type 'boolean)
 
+(defcustom gnus-recent-include-unsent nil
+  "Should we include open, unsent draft buffers as well?"
+  :group 'gnus-recent
+  :type 'boolean)
+
 (defun gnus-recent--date-format (date)
   "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
   (condition-case ()
@@ -88,6 +93,16 @@
           (propertize (gnus-recent--date-format (mail-header-date article-header))
                       'face
                       'gnus-recent-date-face)))
+
+(defun gnus-recent--pretty-unsent ()
+  "Format headers of unsent mail (current buffer) for prompting the user."
+  (concat (propertize (buffer-name)
+                      'face
+                      'bold)
+          (when-let ((to (message-fetch-field "to")))
+            (format " to %s" to))
+          (when-let ((subject (message-fetch-field "subject")))
+            (format ": %s" subject))))
 
 (defun gnus-recent--get-sent-data (message-id group from to subject date)
   "Get the article data used for `gnus-recent' for a sent message.
@@ -195,6 +210,33 @@ there are several Gcc fields, we use the first one."
 (add-hook 'message-sent-hook #'gnus-recent--track-sent-message)
 
 
+;; Unsent messages:
+(defun gnus-recent--message-buffers ()
+  "Return a list of active message buffers.
+Like `message-buffers', but actually return buffers, not just names."
+  (remove nil
+          (mapcar (lambda (buffer)
+                    (with-current-buffer buffer
+	              (when (and (derived-mode-p 'message-mode)
+		                 (null message-sent-message-via))
+	                buffer)))
+                  (buffer-list t))))
+
+(defun gnus-recent--unsent-articles-list ()
+  "Return a formatted list of active message buffers for complection.
+The format is like `gnus-recent--articles-list', except first
+element is the symbol 'unsent and the second is the buffer."
+  (mapcar (lambda (b)
+            (with-current-buffer b
+              (list (gnus-recent--pretty-unsent)
+                    'unsent             ; messageid
+                    b                   ; group
+                    (message-fetch-field "from")
+                    (message-fetch-field "to")
+                    (message-fetch-field "subject"))))
+          (gnus-recent--message-buffers)))
+
+
 (defmacro gnus-recent--shift (lst)
   "Put the first element of LST last, then return that element."
   `(let ((top (pop ,lst)))
@@ -236,7 +278,9 @@ Warn if RECENT can't be deconstructed as expected."
    recent
    (lambda (message-id group _from _to _subject)
      (let ((gnus-recent--showing-recent t))
-       (org-gnus-follow-link group message-id)))))
+       (if (eq message-id 'unsent)
+           (switch-to-buffer group)
+         (org-gnus-follow-link group message-id))))))
 
 (defalias 'gnus-recent--open-article 'gnus-recent)
 
@@ -245,20 +289,22 @@ Warn if RECENT can't be deconstructed as expected."
   (gnus-recent--action
    recent
    (lambda (message-id group from to subject)
-     (let* ((fromto
-             (gnus-recent--name-from-address
-              (if (and from
-                       to
-                       (boundp 'org-from-is-user-regexp)
-                       org-from-is-user-regexp
-                       (string-match org-from-is-user-regexp from))
-                  (concat "to " to)
-                (concat "from " from)))))
-       (format "[[gnus:%s#%s][Email %s: %s]]"
-               group
-               (replace-regexp-in-string "^<\\|>$" "" message-id)
-               (replace-regexp-in-string "[][]" "" fromto)
-               (replace-regexp-in-string "[][]" "" subject))))))
+     (if (eq message-id 'unsent)
+         (error "Not implemented for unsent buffers!")
+       (let* ((fromto
+               (gnus-recent--name-from-address
+                (if (and from
+                         to
+                         (boundp 'org-from-is-user-regexp)
+                         org-from-is-user-regexp
+                         (string-match org-from-is-user-regexp from))
+                    (concat "to " to)
+                  (concat "from " from)))))
+         (format "[[gnus:%s#%s][Email %s: %s]]"
+                 group
+                 (replace-regexp-in-string "^<\\|>$" "" message-id)
+                 (replace-regexp-in-string "[][]" "" fromto)
+                 (replace-regexp-in-string "[][]" "" subject)))))))
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
@@ -309,12 +355,15 @@ When PRINT-MSG is non-nil, show a message about it."
 
 (defun gnus-recent--completing-read ()
   "Pick an article using `completing-read'."
-  (let ((selectrum-should-sort-p nil))
+  (let* ((selectrum-should-sort-p nil)
+         (options (append (when gnus-recent-include-unsent
+                            (gnus-recent--unsent-articles-list))
+                          gnus-recent--articles-list)))
     (when-let ((match (completing-read "Recent article: "
-                                       gnus-recent--articles-list
+                                       options
                                        nil
                                        'require-match)))
-      (assoc match gnus-recent--articles-list))))
+      (assoc match options))))
 
 
 (provide 'gnus-recent)
