@@ -65,6 +65,11 @@
   :group 'gnus-recent
   :type 'boolean)
 
+(defface gnus-recent-date-face
+  '((t . (:inherit font-lock-type-face)))
+  "Face used for dates in the recent article list."
+  :group 'gnus-recent)
+
 (defun gnus-recent--date-format (date)
   "Convert the DATE to 'YYYY-MM-D HH:MM:SS a' format."
   (condition-case ()
