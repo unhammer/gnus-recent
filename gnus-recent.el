@@ -352,18 +352,29 @@ When PRINT-MSG is non-nil, show a message about it."
   (setq gnus-recent--articles-list nil)
   (message "Cleared all gnus-recent article entries"))
 
-(defvar gnus-recent--actions
+(defun gnus-recent--actions-map (parent)
+  "Add `gnus-recent'-related keybindings to PARENT keymap.
+For use with embark and similar."
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map parent)
     (define-key map "l" #'gnus-recent-insert-org-link)
     (define-key map "c" #'gnus-recent-kill-new-org-link)
     (define-key map "k" #'gnus-recent-forget)
     (define-key map "K" #'gnus-recent-forget-all)
     map))
 
+(defvar gnus-recent--embark-map nil)
+
 (defun gnus-recent-embark-minibuffer-hook ()
   "Use as `minibuffer-setup-hook' if using Embark."
   (when (eq this-command 'gnus-recent)
-    (setq-local embark-overriding-keymap gnus-recent--actions)))
+    (unless gnus-recent--embark-map
+      (setq gnus-recent--embark-map
+            (gnus-recent--actions-map embark-general-map)))
+    (setq-local embark-keymap-alist
+                (cons '(t . gnus-recent--embark-map)
+                      (cl-remove-if (lambda (p) (eq (car p) t))
+                                    embark-keymap-alist)))))
 
 (defun gnus-recent--completing-read ()
   "Pick an article using `completing-read'."
