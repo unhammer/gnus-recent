@@ -289,27 +289,30 @@ Warn if RECENT can't be deconstructed as expected."
 
 (defalias 'gnus-recent--open-article 'gnus-recent)
 
-(defun gnus-recent--create-org-link (recent)
-  "Return an `org-mode' link to RECENT Gnus article."
+(defun gnus-recent--create-org-link (recent &optional desc)
+  "Return an `org-mode' link to RECENT Gnus article.
+If DESC, use that as link description."
   (gnus-recent--action
    recent
    (lambda (message-id group from to subject)
      (if (eq message-id 'unsent)
          (error "Not implemented for unsent buffers!")
-       (let* ((fromto
-               (gnus-recent--name-from-address
-                (if (and from
-                         to
-                         (boundp 'org-from-is-user-regexp)
-                         org-from-is-user-regexp
-                         (string-match org-from-is-user-regexp from))
-                    (concat "to " to)
-                  (concat "from " from)))))
-         (format "[[gnus:%s#%s][Email %s: %s]]"
+       (let ((fromto
+              (gnus-recent--name-from-address
+               (if (and from
+                        to
+                        (boundp 'org-from-is-user-regexp)
+                        org-from-is-user-regexp
+                        (string-match org-from-is-user-regexp from))
+                   (concat "to " to)
+                 (concat "from " from)))))
+         (format "[[gnus:%s#%s][%s]]"
                  group
                  (replace-regexp-in-string "^<\\|>$" "" message-id)
-                 (replace-regexp-in-string "[][]" "" fromto)
-                 (replace-regexp-in-string "[][]" "" subject)))))))
+                 (or desc
+                     (format "Email %s: %s"
+                             (replace-regexp-in-string "[][]" "" fromto)
+                             (replace-regexp-in-string "[][]" "" subject)))))))))
 
 (defun gnus-recent-kill-new-org-link (recent)
   "Add to the `kill-ring' an `org-mode' link to RECENT Gnus article."
@@ -320,7 +323,11 @@ Warn if RECENT can't be deconstructed as expected."
 (defun gnus-recent-insert-org-link (recent)
   "Insert an `org-mode' link to RECENT Gnus article."
   (interactive (list (gnus-recent--completing-read)))
-  (insert (gnus-recent--create-org-link recent)))
+  (let* ((region (when (use-region-p)
+                   (buffer-substring (region-beginning) (region-end))))
+         (remove (and region (list (region-beginning) (region-end)))))
+    (when remove (apply #'delete-region remove))
+    (insert (gnus-recent--create-org-link recent region))))
 
 (defun gnus-recent--update (recent to-group)
   "Update RECENT Gnus article in `gnus-recent--articles-list'.
