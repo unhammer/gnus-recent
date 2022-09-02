@@ -284,7 +284,7 @@ Warn if RECENT can't be deconstructed as expected."
    (lambda (message-id group _from _to _subject)
      (let ((gnus-recent--showing-recent t))
        (if (eq message-id 'unsent)
-           (switch-to-buffer group)
+           (select-window (display-buffer group))
          (org-gnus-follow-link group message-id))))))
 
 (defalias 'gnus-recent--open-article 'gnus-recent)
