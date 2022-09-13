@@ -43,8 +43,11 @@
 (unless (require 'org-gnus nil 'noerror)
   (require 'ol-gnus))                   ; for org-gnus-follow-link
 
-(defvar gnus-recent--articles-list nil
-  "The list of articles read in this Emacs session.")
+(if (fboundp 'define-multisession-variable)
+    (define-multisession-variable gnus-recent--articles-list nil
+      "The list of articles read in this Emacs session.")
+  (defvar gnus-recent--articles-list nil
+    "The list of articles read in this Emacs session."))
 
 (defvar gnus-recent--showing-recent nil
   ;; TODO: isn't there some way of showing the calling function?
@@ -142,6 +145,7 @@ The comparison is done with `equal'."
   "Store message described by ARTICLE-DATA in the recent article list.
 For tracking of Backend moves (B-m) see `gnus-recent--track-move-article'."
   (when article-data
+    ;; TODO
     (gnus-recent--add-to-front gnus-recent--articles-list
                                article-data))
   (setq gnus-recent--showing-recent nil))
@@ -334,14 +338,17 @@ If DESC, use that as link description."
 The Gnus article has moved to group TO-GROUP."
   (cl-nsubstitute (list (cl-first recent) (cl-second recent) to-group)
                   recent
+                  ;; TODO
                   gnus-recent--articles-list
-                  :test 'equal :count 1))
+                  :test 'equal :count 1)
+  )
 
 (defun gnus-recent-forget (recent &optional print-msg)
   "Remove RECENT Gnus article from `gnus-recent--articles-list'.
 When PRINT-MSG is non-nil, show a message about it."
   (interactive (list (gnus-recent--completing-read)))
   (setq gnus-recent--articles-list
+        ;; TODO
         (cl-delete recent gnus-recent--articles-list :test 'equal :count 1))
   (when print-msg
     (message "Removed %s from gnus-recent articles" (car recent))))
@@ -349,6 +356,7 @@ When PRINT-MSG is non-nil, show a message about it."
 (defun gnus-recent-forget-all (&rest _recent)
   "Clear the gnus-recent articles list."
   (interactive)
+  ;; TODO
   (setq gnus-recent--articles-list nil)
   (message "Cleared all gnus-recent article entries"))
 
