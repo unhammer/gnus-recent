@@ -376,9 +376,18 @@ For use with embark and similar."
                       (cl-remove-if (lambda (p) (eq (car p) t))
                                     embark-keymap-alist)))))
 
+(eval-when-compile
+  ;; Ensure we can dynamically let-bind this even when compiled with lexical-let
+  (defvar vertico-sort-function)
+  (defvar selectrum-should-sort)
+  (defvar selectrum-should-sort-p))
+
 (defun gnus-recent--completing-read ()
   "Pick an article using `completing-read'."
-  (let* ((selectrum-should-sort-p nil)
+  ;; Ensure we keep our recently-read sort order:
+  (let* ((vertico-sort-function nil)
+         (selectrum-should-sort nil)
+         (selectrum-should-sort-p nil)
          (options (append (when gnus-recent-include-unsent
                             (gnus-recent--unsent-articles-list))
                           gnus-recent--articles-list)))
