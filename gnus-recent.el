@@ -200,8 +200,9 @@ there are several Gcc fields, we use the first one."
 
 (defun gnus-recent--track-sent-message ()
   "Use as `message-send-hook' to track this message in `gnus-recent'."
-  (when-let ((group (string-trim gnus-recent--latest-gcc ; is quoted if it has spaces
-                                 "\"" "\""))
+  (when-let ((group (and gnus-recent--latest-gcc
+                         (string-trim gnus-recent--latest-gcc ; is quoted if it has spaces
+                                      "\"" "\"")))
              (message-id (mail-fetch-field "Message-ID")))
     (gnus-recent--track (gnus-recent--get-sent-data
                          message-id
